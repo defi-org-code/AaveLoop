@@ -16,23 +16,24 @@ contract AaveLoop is Ownable {
     using SafeERC20 for IERC20;
 
     // --- fields ---
-    address public constant LENDING_POOL = address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
-    address public constant AUSDC = address(0xBcca60bB61934080951369a648Fb03DF4F96263C);
     address public constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    address public constant REWARD_TOKEN = address(0x4da27a545c0c5B758a6BA100e3a049001de870f5);
-    uint256 public constant PCM_BASE = 100_000;
+    address public constant LENDING_POOL = address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
+    address public constant AUSDC = address(0xBcca60bB61934080951369a648Fb03DF4F96263C); // aave USDC v2
+    address public constant DTOKEN = address(0x619beb58998eD2278e08620f97007e1116D5D25b); // variable debt token
+    address public constant REWARD_TOKEN = address(0x4da27a545c0c5B758a6BA100e3a049001de870f5); // stkAAVE
+    uint256 public constant BASE_PERCENT = 100_000; // percentmil == 1/100,000
 
     // --- events ---
     event LogDeposit(uint256 amount);
+    event LogWithdraw(uint256 amount);
     event LogBorrow(uint256 amount);
-    event LogRedeem(address token, address owner, uint256 tokenAmount);
-    event LogRedeemUnderlying(address token, address owner, uint256 tokenAmount);
-    event LogRepay(address token, address owner, uint256 tokenAmount);
+    event LogRepay(uint256 amount);
 
     // --- Constructor ---
 
     constructor(address owner) {
         transferOwnership(owner);
+        IERC20(USDC).safeApprove(LENDING_POOL, type(uint256).max);
     }
 
     // --- views ---
@@ -50,132 +51,44 @@ contract AaveLoop is Ownable {
         return healthFactor;
     }
 
-    function getLTV() public view returns (uint256) {
+    function getPercentLTV() public view returns (uint256) {
         (, , , , uint256 ltv, ) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
-        return ltv;
+        return ltv * 10; // from 10,000 to PCM_BASE
     }
 
     // --- unrestricted actions ---
 
-    /**
-     * claims rewards to owner
-     */
-    function claimRewards() external {
+    function claimRewardsToOwner() external {
         IStakedAave(REWARD_TOKEN).claimRewards(owner(), type(uint256).max);
     }
 
     // --- main ---
 
-    function enterPosition(uint256 maxIterations) external onlyOwner {
-        uint256 amountToInvestUSDC = getBalanceUSDC();
-        require(amountToInvestUSDC > 0, "insufficient funds");
+    function enterPosition(uint256 iterations) external onlyOwner {
+        uint256 balanceUSDC = getBalanceUSDC();
+        require(balanceUSDC > 0, "insufficient funds");
 
-        IERC20(USDC).safeApprove(LENDING_POOL, type(uint256).max);
-
-        for (uint256 i = 0; i < maxIterations && amountToInvestUSDC > 0; i++) {
-            console.log("deposit", amountToInvestUSDC);
-            _deposit(amountToInvestUSDC);
-            uint256 borrowAmount = (amountToInvestUSDC * getLTV()) / 10_000;
-            console.log("loop", i, borrowAmount);
-
-            (
-                uint256 totalCollateralETH,
-                uint256 totalDebtETH,
-                uint256 availableBorrowsETH,
-                uint256 currentLiquidationThreshold,
-                uint256 ltv,
-                uint256 healthFactor
-            ) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
-            console.log(availableBorrowsETH);
-
-            _borrow(borrowAmount - 1e6);
-
-            amountToInvestUSDC = getBalanceUSDC();
+        for (uint256 i = 0; i < iterations; i++) {
+            _deposit(balanceUSDC);
+            uint256 borrowAmount = (balanceUSDC * getPercentLTV()) / BASE_PERCENT;
+            _borrow(borrowAmount - 1e6); // $1 buffer for rounding errors
+            balanceUSDC = getBalanceUSDC();
         }
 
-        if (amountToInvestUSDC > 0) {
-            _deposit(amountToInvestUSDC);
-        }
+        _deposit(balanceUSDC);
     }
 
-    // 3 typical cases:
-    // minAmountIn = account balance (this goes for one iteration: mint, borrow, mint)
-    // minAmountIn < account balance (this goes for multiple iterations: mint, borrow, mint, borrow, ..., mint until the last mint was for a sum smaller than minAmountIn)
-    // minAmountIn = uint(-1) (this goes for zero iterations: mint)
-    //    function enterPosition(
-    //        uint256 minAmountIn,
-    //        uint256 borrowRatioNum,
-    //        uint256 borrowRatioDenom
-    //    ) external onlyManagerOrOwner {
-    //        (bool isListed, ) = Comptroller(UNITROLLER).markets(CUSDC);
-    //        require(isListed, "cToken not listed");
-    //
-    //        setApprove();
-    //        enterMarkets();
-    //
-    //        uint256 usdcBalance = underlyingBalance();
-    //        require(usdcBalance > 0, "not enough USDC balance");
-    //
-    //        while (usdcBalance >= minAmountIn) {
-    //            mintCToken(usdcBalance);
-    //
-    //            (uint256 err, uint256 liquidity, uint256 shortfall) = getAccountLiquidity(); // 18 decimals
-    //            require(err == 0, "getAccountLiquidity error");
-    //            require(shortfall == 0, "shortfall");
-    //
-    //            uint256 amountToBorrow = eighteenToUSDC(liquidity); // 6 decimals
-    //            amountToBorrow = amountToBorrow.mul(borrowRatioNum).div(borrowRatioDenom);
-    //
-    //            borrow(amountToBorrow);
-    //
-    //            usdcBalance = underlyingBalance();
-    //        }
-    //
-    //        mintCToken(usdcBalance);
-    //    }
-    //
-    //    // maxIterations control the loop
-    //    function exitPosition(
-    //        uint256 maxIterations,
-    //        uint256 redeemRatioNum,
-    //        uint256 redeemRatioDenom
-    //    ) external onlyManagerOrOwner returns (uint256) {
-    //        require(cTokenBalance() > 0, "cUSDC balance = 0");
-    //
-    //        setApprove();
-    //
-    //        (, uint256 collateralFactor) = Comptroller(UNITROLLER).markets(CUSDC);
-    //
-    //        uint256 _borrowBalance = borrowBalanceCurrent();
-    //
-    //        for (uint256 i = 0; _borrowBalance > 0 && i < maxIterations; i++) {
-    //            (uint256 err, uint256 liquidity, uint256 shortfall) = getAccountLiquidity(); // 18 decimals
-    //            require(err == 0, "getAccountLiquidity error");
-    //            require(shortfall == 0, "shortfall");
-    //
-    //            // getAmountToRedeem from liquidity and collateralFactor
-    //            (, Exp memory amountToRedeemExp) = getExp(liquidity, collateralFactor);
-    //            uint256 amountToRedeem = eighteenToUSDC(amountToRedeemExp.mantissa);
-    //            amountToRedeem = amountToRedeem.mul(redeemRatioNum).div(redeemRatioDenom); // 6 decimals
-    //
-    //            redeemUnderlying(amountToRedeem);
-    //
-    //            uint256 usdcBalance = underlyingBalance();
-    //            if (usdcBalance > _borrowBalance) {
-    //                require(CERC20(CUSDC).repayBorrow(uint256(-1)) == 0, "repayBorrow -1 failed");
-    //            } else {
-    //                require(CERC20(CUSDC).repayBorrow(usdcBalance) == 0, "repayBorrow failed");
-    //            }
-    //
-    //            _borrowBalance = CERC20(CUSDC).borrowBalanceStored(address(this));
-    //        }
-    //
-    //        if (_borrowBalance == 0) {
-    //            redeemCToken(cTokenBalance());
-    //        }
-    //
-    //        return underlyingBalance();
-    //    }
+    function exitPosition() external onlyOwner {
+        while (getPercentLTV() > 0) {
+            console.log("loop");
+            _withdraw(getBalanceAUSDC() - 1e6); // $1 buffer for rounding errors
+            console.log("withdraw", getBalanceUSDC(), getBalanceAUSDC());
+            _repay(getBalanceUSDC());
+            console.log("repay", getBalanceUSDC(), getBalanceAUSDC());
+        }
+        _withdraw(type(uint256).max);
+    }
+
     //
     //    // --- withdraw assets by owner ---
     //
@@ -211,14 +124,24 @@ contract AaveLoop is Ownable {
     //    }
     //
 
-    function _deposit(uint256 amount) private {
+    function _deposit(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).deposit(USDC, amount, address(this), 0);
         emit LogDeposit(amount);
     }
 
-    function _borrow(uint256 amount) private {
+    function _borrow(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).borrow(USDC, amount, 2, 0, address(this));
         emit LogBorrow(amount);
+    }
+
+    function _withdraw(uint256 amount) public onlyOwner {
+        ILendingPool(LENDING_POOL).withdraw(USDC, amount, address(this));
+        emit LogWithdraw(amount);
+    }
+
+    function _repay(uint256 amount) public onlyOwner {
+        ILendingPool(LENDING_POOL).repay(USDC, amount, 2, address(this));
+        emit LogRepay(amount);
     }
 
     //    function redeemCToken(uint256 amount) public onlyManagerOrOwner {
