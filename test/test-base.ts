@@ -60,7 +60,7 @@ export async function balanceUSDC(address: string = aaveloop.options.address) {
  * @returns aave balance, defaults to aaveloop address
  */
 export async function balanceReward(address: string = aaveloop.options.address) {
-  return bn(await Tokens.AAVE().methods.balanceOf(address).call());
+  return bn(await Tokens.stkAAVE().methods.balanceOf(address).call());
 }
 
 async function supplyCapitalAsDeployer(amount: BN) {

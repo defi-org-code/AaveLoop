@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract TestHelpers {
-    function maxUint256() public view returns (uint256) {
+    function maxUint256() public pure returns (uint256) {
         return type(uint256).max;
     }
 }

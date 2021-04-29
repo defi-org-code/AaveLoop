@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "./ILendingPool.sol";
+import "./IAaveInterfaces.sol";
 
 contract AaveLoop is Ownable {
     using SafeERC20 for IERC20;
@@ -18,7 +18,7 @@ contract AaveLoop is Ownable {
     address public constant LENDING_POOL = address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
     address public constant AUSDC = address(0xBcca60bB61934080951369a648Fb03DF4F96263C);
     address public constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    address public constant REWARD_TOKEN = address(0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9);
+    address public constant REWARD_TOKEN = address(0x4da27a545c0c5B758a6BA100e3a049001de870f5);
 
     // --- events ---
     event LogMint(address token, address owner, uint256 tokenAmount);
@@ -58,17 +58,18 @@ contract AaveLoop is Ownable {
         return ILendingPool(LENDING_POOL).getUserAccountData(address(this));
     }
 
+    // --- unrestricted actions ---
+
+    function claimRewards() external {
+        IStakedAave(REWARD_TOKEN).claimRewards(owner(), type(uint256).max);
+    }
+
     //
-    //    // --- unrestricted actions ---
     //
     //    function borrowBalanceCurrent() public returns (uint256) {
     //        return CERC20(CUSDC).borrowBalanceCurrent(address(this));
     //    }
     //
-        function claimRewards() public returns (uint256) {
-            ILendingPool(LENDING_POOL).claimComp(address(this));
-            return IERC20(COMP).balanceOf(address(this));
-        }
 
     //    function claimComp(
     //        address[] memory holders,

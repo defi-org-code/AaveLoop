@@ -13,8 +13,8 @@ export namespace Tokens {
     return newToken("$USDC", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
   }
 
-  export function AAVE() {
-    return newToken("$AAVE", "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9");
+  export function stkAAVE() {
+    return newToken("$stkAAVE", "0x4da27a545c0c5B758a6BA100e3a049001de870f5");
   }
 }
 

@@ -497,3 +497,13 @@ library DataTypes {
 
     enum InterestRateMode {NONE, STABLE, VARIABLE}
 }
+
+interface IStakedAave {
+    function stake(address to, uint256 amount) external;
+
+    function redeem(address to, uint256 amount) external;
+
+    function cooldown() external;
+
+    function claimRewards(address to, uint256 amount) external;
+}
