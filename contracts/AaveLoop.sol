@@ -65,11 +65,11 @@ contract AaveLoop is Ownable {
     //        return CERC20(CUSDC).borrowBalanceCurrent(address(this));
     //    }
     //
-    //    function claimComp() public returns (uint256) {
-    //        Comptroller(UNITROLLER).claimComp(address(this));
-    //        return IERC20(COMP).balanceOf(address(this));
-    //    }
-    //
+        function claimRewards() public returns (uint256) {
+            ILendingPool(LENDING_POOL).claimComp(address(this));
+            return IERC20(COMP).balanceOf(address(this));
+        }
+
     //    function claimComp(
     //        address[] memory holders,
     //        address[] memory cTokens,
