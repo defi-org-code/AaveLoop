@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { bn, many } from "../src/utils";
+import { bn, bn6 } from "../src/utils";
 import { deployContract } from "../src/extensions";
 import { impersonate, resetNetworkFork, tag } from "../src/network";
 import { Tokens } from "../src/token";
@@ -39,7 +39,7 @@ async function doBeforeEach() {
   aaveloop = await deployContract<AaveLoop>("AaveLoop", deployer, [owner]);
   testHelpers = await deployContract<TestHelpers>("TestHelpers", deployer);
 
-  // await supplyCapitalAsDeployer(bn6("10,000,000"));
+  await ensureBalanceUSDC(owner, bn6("10,000,000"));
 }
 
 async function initWallet() {
@@ -63,16 +63,10 @@ export async function balanceReward(address: string = aaveloop.options.address) 
   return bn(await Tokens.stkAAVE().methods.balanceOf(address).call());
 }
 
-async function supplyCapitalAsDeployer(amount: BN) {
-  await ensureUsdBalance(deployer, amount);
-  await Tokens.USDC().methods.approve(aaveloop.options.address, many).send({ from: deployer });
-  // await aaveloop.methods.depositAllCapital().send({ from: deployer });
-}
-
 /**
  * Takes USDC from whale ensuring minimum amount
  */
-async function ensureUsdBalance(address: string, amount: BN) {
+async function ensureBalanceUSDC(address: string, amount: BN) {
   if ((await balanceUSDC(address)).lt(amount)) {
     await Tokens.USDC().methods.transfer(address, amount).send({ from: usdcWhale });
   }

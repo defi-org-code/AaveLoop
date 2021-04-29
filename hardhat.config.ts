@@ -44,7 +44,7 @@ const config: HardhatUserConfig = {
   },
   mocha: {
     timeout: 240_000,
-    retries: 3,
+    // retries: 3,
     bail: true,
   },
   gasReporter: {
