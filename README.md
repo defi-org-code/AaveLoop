@@ -1,12 +1,12 @@
-# CompoundLoop
+# AaveLoop
 
 ## What is this
 
-DeFi strategy to invest USDC in [Compound](https://compound.finance/) in a loop in order to earn COMP rewards for approx x7 of the initial investment.
+DeFi strategy to invest USDC in [Aave](https://aave.com/) in a loop in order to earn COMP rewards for approx x7 of the initial investment.
 
 ## E2E Tests
 
-The tests are explained [here](https://github.com/defi-org-code/CompoundLoop/issues/4). Run them on a mainnet fork with Hardhat:
+The tests are explained [here](https://github.com/defi-org-code/AaveLoop/issues/4). Run them on a mainnet fork with Hardhat:
 
 ```
 npm install
@@ -21,7 +21,7 @@ It's recommended to use [Remix](https://remix.ethereum.org/) to deploy the contr
 2. Fix OpenZepplin imports in all files by replacing `@openzeppelin` with `https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0`
 3. Under *Solidity Compiler* tab:
     * Set `Enable optimization: 200` 
-    * Click `Compile CompoundLoop.sol` 
+    * Click `Compile AaveLoop.sol` 
     * After compilation, copy its ABI by clicking `ABI` below
   
 4. Under *Deploy & run transactions* tab: 
@@ -33,7 +33,7 @@ It's recommended to use [Remix](https://remix.ethereum.org/) to deploy the contr
 ## Management roles
 
 * *Owner* can withdraw funds
-* *Manager* can enter/exit the position in Compound
+* *Manager* can enter/exit the position in Aave
 
 For simplicity, you can leave both roles as the deployer Trezor account since handling the contract can be manual (no bot needed).
 
@@ -56,7 +56,7 @@ It's recommended to take the ABI created during deployment and upload it as priv
 
 If `exitPosition` fails, exit can be done manually:
 
-1. Using multiple manual rollback transactions, see [test #3](https://github.com/defi-org-code/CompoundLoop/issues/4)
+1. Using multiple manual rollback transactions, see [test #3](https://github.com/defi-org-code/AaveLoop/issues/4)
 
 2. The owner of the contract can also execute an arbitrary transaction using `emergencySubmitTransaction`
 
