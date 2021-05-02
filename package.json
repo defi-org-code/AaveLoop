@@ -25,7 +25,6 @@
     "chai": "^4.3.4",
     "chai-bn": "^0.2.1",
     "hardhat": "^2.2.1",
-    "hardhat-deploy": "^0.7.5",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-tracer": "^1.0.0-alpha.5",
     "lodash": "^4.17.21",
