@@ -50,24 +50,10 @@ async function initWallet() {
 }
 
 /**
- * @returns usdc balance, defaults to aaveloop address
- */
-export async function balanceUSDC(address: string = aaveloop.options.address) {
-  return bn(await Tokens.USDC().methods.balanceOf(address).call());
-}
-
-/**
- * @returns aave balance, defaults to aaveloop address
- */
-export async function balanceReward(address: string = aaveloop.options.address) {
-  return bn(await Tokens.stkAAVE().methods.balanceOf(address).call());
-}
-
-/**
  * Takes USDC from whale ensuring minimum amount
  */
 async function ensureBalanceUSDC(address: string, amount: BN) {
-  if ((await balanceUSDC(address)).lt(amount)) {
+  if (bn(await Tokens.USDC().methods.balanceOf(address).call()).lt(amount)) {
     await Tokens.USDC().methods.transfer(address, amount).send({ from: usdcWhale });
   }
 }
