@@ -21,6 +21,7 @@ contract AaveLoop is Ownable {
     address public constant AUSDC = address(0xBcca60bB61934080951369a648Fb03DF4F96263C); // aave USDC v2
     address public constant DTOKEN = address(0x619beb58998eD2278e08620f97007e1116D5D25b); // variable debt token
     address public constant REWARD_TOKEN = address(0x4da27a545c0c5B758a6BA100e3a049001de870f5); // stkAAVE
+    address public constant DEBT_TOKEN = address(0x619beb58998eD2278e08620f97007e1116D5D25b); // Aave variable debt bearing USDC (variableD...)
     uint256 public constant BASE_PERCENT = 100_000; // percentmil == 1/100,000
 
     // --- events ---
@@ -41,6 +42,10 @@ contract AaveLoop is Ownable {
 
     function getBalanceAUSDC() public view returns (uint256) {
         return IERC20(AUSDC).balanceOf(address(this));
+    }
+
+    function getBalanceDebtToken() public view returns (uint256) {
+        return IERC20(DEBT_TOKEN).balanceOf(address(this));
     }
 
     function getBalanceUSDC() public view returns (uint256) {
@@ -97,37 +102,12 @@ contract AaveLoop is Ownable {
     }
 
     function exitPosition() external onlyOwner {
-        uint256 balanceAUSDC = getBalanceAUSDC();
-        (uint256 totalCollateralETH, uint256 totalDebtETH, , uint256 currentLiquidationThreshold, ,) =
-        getUserAccountData();
-        while (totalDebtETH > 0) {
-            console.log("loop", balanceAUSDC, totalDebtETH);
-
-            console.log("getPercentLTV()", totalDebtETH * 1 ether / totalCollateralETH);
-            console.log("totalCollateralETH", totalCollateralETH);
-            uint256 ethPrice = (balanceAUSDC * 1e12) / totalCollateralETH;
-            // 6 + 12 = 18 decimals
-            //console.log("ethPrice", ethPrice);
-            //uint256 amountToWithdraw = (((currentLiquidationThreshold * totalCollateralETH) - totalDebtETH) / currentLiquidationThreshold);
-            uint256 amountToWithdraw = totalCollateralETH - ((totalDebtETH * BASE_PERCENT) / getPercentLTV());
-            // x=totalCollateralETH-totalDebtETH/0.85
-
-            console.log("amountToWithdraw 2", amountToWithdraw);
-            _withdraw((amountToWithdraw / 1e12) * ethPrice);
-
-
-            (totalCollateralETH, totalDebtETH, , currentLiquidationThreshold, ,) = getUserAccountData();
-
-
-            console.log("getPercentLTV()", totalDebtETH * 1 ether / totalCollateralETH);
-            console.log("withdraw", getBalanceUSDC(), getBalanceAUSDC(), getHealthFactor());
-            _repay((amountToWithdraw / 1e12) * ethPrice);
-            (totalCollateralETH, totalDebtETH, , currentLiquidationThreshold, ,) = getUserAccountData();
-            console.log("repay", getBalanceUSDC(), getBalanceAUSDC());
-            balanceAUSDC = getBalanceAUSDC();
+        while (getBalanceDebtToken() > 0) {
+            uint256 amountToWithdraw = getBalanceAUSDC() - ((getBalanceDebtToken() * BASE_PERCENT) / getPercentLTV());
+            _withdraw(amountToWithdraw);
+            _repay(getBalanceUSDC());
         }
         _withdraw(type(uint256).max);
-        console.log("finish", getBalanceUSDC(), getBalanceAUSDC());
     }
 
     //
