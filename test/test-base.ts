@@ -14,6 +14,7 @@ export let deployer: string;
 export let owner: string;
 export let aaveloop: AaveLoop;
 export let testHelpers: TestHelpers;
+export const POSITION = "20,000,000";
 
 /**
  * test case state init
@@ -39,7 +40,7 @@ async function doBeforeEach() {
   aaveloop = await deployContract<AaveLoop>("AaveLoop", deployer, [owner]);
   testHelpers = await deployContract<TestHelpers>("TestHelpers", deployer);
 
-  await ensureBalanceUSDC(owner, bn6("10,000,000"));
+  await ensureBalanceUSDC(owner, bn6(POSITION));
 }
 
 async function initWallet() {

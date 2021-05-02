@@ -19,9 +19,9 @@ contract AaveLoop is Ownable {
     address public constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address public constant LENDING_POOL = address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
     address public constant AUSDC = address(0xBcca60bB61934080951369a648Fb03DF4F96263C); // aave USDC v2
-    address public constant DTOKEN = address(0x619beb58998eD2278e08620f97007e1116D5D25b); // variable debt token
     address public constant REWARD_TOKEN = address(0x4da27a545c0c5B758a6BA100e3a049001de870f5); // stkAAVE
     address public constant DEBT_TOKEN = address(0x619beb58998eD2278e08620f97007e1116D5D25b); // Aave variable debt bearing USDC (variableD...)
+    address public constant LIQUIDITY_MINING = address(0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5); // Aave variable debt bearing USDC (variableD...)
     uint256 public constant BASE_PERCENT = 100_000; // percentmil == 1/100,000
 
     // --- events ---
@@ -51,6 +51,10 @@ contract AaveLoop is Ownable {
         return IERC20(USDC).balanceOf(address(this));
     }
 
+    function getBalanceReward() public view returns (uint256) {
+        return IAaveIncentivesController(LIQUIDITY_MINING).getRewardsBalance(getRewardTokenAssets(), address(this));
+    }
+
     function getPercentLTV() public view returns (uint256) {
         (, , , , uint256 ltv, ) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
         return ltv * 10; // from 10,000 to PCM_BASE
@@ -61,10 +65,17 @@ contract AaveLoop is Ownable {
         return healthFactor;
     }
 
+    function getRewardTokenAssets() internal pure returns (address[] memory) {
+        address[] memory addresses = new address[](2);
+        addresses[0] = AUSDC;
+        addresses[1] = DEBT_TOKEN;
+        return addresses;
+    }
+
     // --- unrestricted actions ---
 
     function claimRewardsToOwner() external {
-        IStakedAave(REWARD_TOKEN).claimRewards(owner(), type(uint256).max);
+        IAaveIncentivesController(LIQUIDITY_MINING).claimRewards(getRewardTokenAssets(), type(uint256).max, owner());
     }
 
     // --- main ---
