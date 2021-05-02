@@ -87,7 +87,7 @@ contract AaveLoop is Ownable {
         for (uint256 i = 0; i < iterations; i++) {
             _deposit(balanceUSDC);
             uint256 borrowAmount = (balanceUSDC * getPercentLTV()) / BASE_PERCENT;
-            _borrow(borrowAmount - 1e6); // $1 buffer for rounding errors
+            _borrow(borrowAmount);
             balanceUSDC = getBalanceUSDC();
         }
 
