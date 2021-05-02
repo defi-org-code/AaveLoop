@@ -34,6 +34,7 @@ contract AaveLoop is Ownable {
     constructor(address owner) {
         transferOwnership(owner);
         IERC20(USDC).safeApprove(LENDING_POOL, type(uint256).max);
+        IERC20(AUSDC).safeApprove(LENDING_POOL, type(uint256).max);
     }
 
     // --- views ---
@@ -52,21 +53,22 @@ contract AaveLoop is Ownable {
     }
 
     function getPercentLTV() public view returns (uint256) {
-        (, , , , uint256 ltv, ) = getUserAccountData();
-        return ltv * 10; // from 10,000 to PCM_BASE
+        (, , , , uint256 ltv,) = getUserAccountData();
+        return ltv * 10;
+        // from 10,000 to PCM_BASE
     }
 
     function getUserAccountData()
-        public
-        view
-        returns (
-            uint256 totalCollateralETH,
-            uint256 totalDebtETH,
-            uint256 availableBorrowsETH,
-            uint256 currentLiquidationThreshold,
-            uint256 ltv,
-            uint256 healthFactor
-        )
+    public
+    view
+    returns (
+        uint256 totalCollateralETH,
+        uint256 totalDebtETH,
+        uint256 availableBorrowsETH,
+        uint256 currentLiquidationThreshold,
+        uint256 ltv,
+        uint256 healthFactor
+    )
     {
         return ILendingPool(LENDING_POOL).getUserAccountData(address(this));
     }
@@ -86,7 +88,8 @@ contract AaveLoop is Ownable {
         for (uint256 i = 0; i < iterations; i++) {
             _deposit(balanceUSDC);
             uint256 borrowAmount = (balanceUSDC * getPercentLTV()) / BASE_PERCENT;
-            _borrow(borrowAmount - 1e6); // $1 buffer for rounding errors
+            _borrow(borrowAmount - 1e6);
+            // $1 buffer for rounding errors
             balanceUSDC = getBalanceUSDC();
         }
 
@@ -95,23 +98,36 @@ contract AaveLoop is Ownable {
 
     function exitPosition() external onlyOwner {
         uint256 balanceAUSDC = getBalanceAUSDC();
+        (uint256 totalCollateralETH, uint256 totalDebtETH, , uint256 currentLiquidationThreshold, ,) =
+        getUserAccountData();
+        while (totalDebtETH > 0) {
+            console.log("loop", balanceAUSDC, totalDebtETH);
 
-        while (getPercentLTV() > 0) {
-            console.log("loop", balanceAUSDC);
-
-            (uint256 totalCollateralETH, uint256 totalDebtETH, , , , ) = getUserAccountData();
-            uint256 ethPrice = (balanceAUSDC * 1e12) / totalCollateralETH; // 6 + 12 = 18 decimals
+            console.log("getPercentLTV()", totalDebtETH * 1 ether / totalCollateralETH);
             console.log("totalCollateralETH", totalCollateralETH);
-            console.log("ethPrice", ethPrice);
-            uint256 amountToWithdraw = (((0.8 * totalCollateralETH) - totalDebtETH) / 0.8) * ethPrice;
+            uint256 ethPrice = (balanceAUSDC * 1e12) / totalCollateralETH;
+            // 6 + 12 = 18 decimals
+            //console.log("ethPrice", ethPrice);
+            //uint256 amountToWithdraw = (((currentLiquidationThreshold * totalCollateralETH) - totalDebtETH) / currentLiquidationThreshold);
+            uint256 amountToWithdraw = totalCollateralETH - ((totalDebtETH * BASE_PERCENT) / getPercentLTV());
+            // x=totalCollateralETH-totalDebtETH/0.85
 
-            console.log("amountToWithdraw", amountToWithdraw);
-            _withdraw(amountToWithdraw);
+            console.log("amountToWithdraw 2", amountToWithdraw);
+            _withdraw((amountToWithdraw / 1e12) * ethPrice);
+
+
+            (totalCollateralETH, totalDebtETH, , currentLiquidationThreshold, ,) = getUserAccountData();
+
+
+            console.log("getPercentLTV()", totalDebtETH * 1 ether / totalCollateralETH);
             console.log("withdraw", getBalanceUSDC(), getBalanceAUSDC(), getHealthFactor());
-            _repay(amountToWithdraw);
+            _repay((amountToWithdraw / 1e12) * ethPrice);
+            (totalCollateralETH, totalDebtETH, , currentLiquidationThreshold, ,) = getUserAccountData();
             console.log("repay", getBalanceUSDC(), getBalanceAUSDC());
+            balanceAUSDC = getBalanceAUSDC();
         }
         _withdraw(type(uint256).max);
+        console.log("finish", getBalanceUSDC(), getBalanceAUSDC());
     }
 
     //
