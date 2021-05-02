@@ -47,13 +47,28 @@ contract AaveLoop is Ownable {
     }
 
     function getHealthFactor() public view returns (uint256) {
-        (, , , , , uint256 healthFactor) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
+        (, , , , , uint256 healthFactor) = getUserAccountData();
         return healthFactor;
     }
 
     function getPercentLTV() public view returns (uint256) {
-        (, , , , uint256 ltv, ) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
+        (, , , , uint256 ltv, ) = getUserAccountData();
         return ltv * 10; // from 10,000 to PCM_BASE
+    }
+
+    function getUserAccountData()
+        public
+        view
+        returns (
+            uint256 totalCollateralETH,
+            uint256 totalDebtETH,
+            uint256 availableBorrowsETH,
+            uint256 currentLiquidationThreshold,
+            uint256 ltv,
+            uint256 healthFactor
+        )
+    {
+        return ILendingPool(LENDING_POOL).getUserAccountData(address(this));
     }
 
     // --- unrestricted actions ---
@@ -79,11 +94,21 @@ contract AaveLoop is Ownable {
     }
 
     function exitPosition() external onlyOwner {
+        uint256 balanceAUSDC = getBalanceAUSDC();
+
         while (getPercentLTV() > 0) {
-            console.log("loop");
-            _withdraw(getBalanceAUSDC() - 1e6); // $1 buffer for rounding errors
-            console.log("withdraw", getBalanceUSDC(), getBalanceAUSDC());
-            _repay(getBalanceUSDC());
+            console.log("loop", balanceAUSDC);
+
+            (uint256 totalCollateralETH, uint256 totalDebtETH, , , , ) = getUserAccountData();
+            uint256 ethPrice = (balanceAUSDC * 1e12) / totalCollateralETH; // 6 + 12 = 18 decimals
+            console.log("totalCollateralETH", totalCollateralETH);
+            console.log("ethPrice", ethPrice);
+            uint256 amountToWithdraw = (((0.8 * totalCollateralETH) - totalDebtETH) / 0.8) * ethPrice;
+
+            console.log("amountToWithdraw", amountToWithdraw);
+            _withdraw(amountToWithdraw);
+            console.log("withdraw", getBalanceUSDC(), getBalanceAUSDC(), getHealthFactor());
+            _repay(amountToWithdraw);
             console.log("repay", getBalanceUSDC(), getBalanceAUSDC());
         }
         _withdraw(type(uint256).max);
