@@ -1,6 +1,7 @@
 import Web3 from "web3";
 import BN from "bn.js";
 import { web3 } from "./network";
+import { POSITION } from "../test/test-base";
 
 export const zero = bn("0");
 export const ether = bn18("1");

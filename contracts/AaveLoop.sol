@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./IAaveInterfaces.sol";
 
 import "hardhat/console.sol"; // TODO remove
@@ -15,29 +16,29 @@ import "hardhat/console.sol"; // TODO remove
 contract AaveLoop is Ownable {
     using SafeERC20 for IERC20;
 
-    // --- fields ---
+    // ---- fields ----
     address public constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address public constant LENDING_POOL = address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
     address public constant AUSDC = address(0xBcca60bB61934080951369a648Fb03DF4F96263C); // aave USDC v2
     address public constant REWARD_TOKEN = address(0x4da27a545c0c5B758a6BA100e3a049001de870f5); // stkAAVE
     address public constant DEBT_TOKEN = address(0x619beb58998eD2278e08620f97007e1116D5D25b); // Aave variable debt bearing USDC (variableD...)
-    address public constant LIQUIDITY_MINING = address(0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5); // Aave variable debt bearing USDC (variableD...)
+    address public constant LIQUIDITY_MINING = address(0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5); // IncentivesController
     uint256 public constant BASE_PERCENT = 100_000; // percentmil == 1/100,000
 
-    // --- events ---
+    // ---- events ----
     event LogDeposit(uint256 amount);
     event LogWithdraw(uint256 amount);
     event LogBorrow(uint256 amount);
     event LogRepay(uint256 amount);
 
-    // --- Constructor ---
+    // ---- Constructor ----
 
     constructor(address owner) {
         transferOwnership(owner);
         IERC20(USDC).safeApprove(LENDING_POOL, type(uint256).max);
     }
 
-    // --- views ---
+    // ---- views ----
 
     function getBalanceAUSDC() public view returns (uint256) {
         return IERC20(AUSDC).balanceOf(address(this));
@@ -65,20 +66,11 @@ contract AaveLoop is Ownable {
         return healthFactor;
     }
 
-    function getRewardTokenAssets() internal pure returns (address[] memory) {
-        address[] memory addresses = new address[](2);
-        addresses[0] = AUSDC;
-        addresses[1] = DEBT_TOKEN;
-        return addresses;
-    }
-
-    // --- unrestricted actions ---
-
     function claimRewardsToOwner() external {
         IAaveIncentivesController(LIQUIDITY_MINING).claimRewards(getRewardTokenAssets(), type(uint256).max, owner());
     }
 
-    // --- main ---
+    // ---- main ----
 
     function enterPosition(uint256 iterations) external onlyOwner {
         uint256 balanceUSDC = getBalanceUSDC();
@@ -103,6 +95,8 @@ contract AaveLoop is Ownable {
         _withdraw(type(uint256).max);
     }
 
+    // ---- internals ----
+
     function _deposit(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).deposit(USDC, amount, address(this), 0);
         emit LogDeposit(amount);
@@ -123,67 +117,25 @@ contract AaveLoop is Ownable {
         emit LogRepay(amount);
     }
 
-    //
-    //    // --- emergency ---
-    //
-    //
-    //    // --- withdraw assets by owner ---
+    function getRewardTokenAssets() internal pure returns (address[] memory) {
+        address[] memory addresses = new address[](2);
+        addresses[0] = AUSDC;
+        addresses[1] = DEBT_TOKEN;
+        return addresses;
+    }
 
-    //    function safeTransferAssetToOwner(address src) public onlyOwner {
-    //        uint256 balance = IERC20(src).balanceOf(address(this));
-    //        if (balance > 0) {
-    //            IERC20(src).safeTransfer(owner(), balance);
-    //        }
-    //    }
-    //
-    //    function emergencyTransferAsset(
-    //        address asset_,
-    //        address to_,
-    //        uint256 amount_
-    //    ) public onlyOwner {
-    //        IERC20(asset_).transfer(to_, amount_);
-    //    }
-    //
-    //    function emergencySafeTransferAsset(
-    //        address asset_,
-    //        address to_,
-    //        uint256 amount_
-    //    ) public onlyOwner {
-    //        IERC20(asset_).safeTransfer(to_, amount_);
-    //    }
-    //
-    //    function emergencyTransferAll(address[] memory tokens_, address to_) public onlyOwner {
-    //        uint256 ercLen = tokens_.length;
-    //        for (uint256 i = 0; i < ercLen; i++) {
-    //            IERC20 erc = IERC20(tokens_[i]);
-    //            uint256 balance = erc.balanceOf(address(this));
-    //            if (balance > 0) {
-    //                erc.safeTransfer(to_, balance);
-    //            }
-    //        }
-    //    }
-    //
-    //    function emergencySubmitTransaction(
-    //        address destination,
-    //        bytes memory data,
-    //        uint256 gasLimit
-    //    ) public onlyOwner returns (bool) {
-    //        uint256 dataLength = data.length;
-    //        bool result;
-    //        // solhint-disable-next-line
-    //        assembly {
-    //            let x := mload(0x40) // memory for output
-    //            let d := add(data, 32) // first 32 bytes are the padded length of data, so exclude that
-    //            result := call(
-    //                gasLimit,
-    //                destination,
-    //                0, // value is ignored
-    //                d,
-    //                dataLength,
-    //                x,
-    //                0 // output is ignored
-    //            )
-    //        }
-    //        return result;
-    //    }
+    // ---- emergency ----
+
+    function withdrawToOwner(address asset) external onlyOwner {
+        uint256 balance = IERC20(asset).balanceOf(address(this));
+        IERC20(asset).safeTransfer(owner(), balance);
+    }
+
+    function emergencyFunctionCall(address target, bytes memory data) external onlyOwner {
+        Address.functionCall(target, data);
+    }
+
+    function emergencyFunctionDelegateCall(address target, bytes memory data) external onlyOwner {
+        Address.functionDelegateCall(target, data);
+    }
 }

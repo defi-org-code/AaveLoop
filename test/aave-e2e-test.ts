@@ -1,8 +1,9 @@
 import { expect } from "chai";
 import { aaveloop, deployer, owner, POSITION } from "./test-base";
 import { Tokens } from "../src/token";
-import { bn6, zero } from "../src/utils";
+import { bn, bn18, bn6, ether, fmt18, fmt6, zero } from "../src/utils";
 import { advanceTime } from "../src/network";
+import BN from "bn.js";
 
 describe("AaveLoop E2E Tests", () => {
   it("happy path", async () => {
@@ -27,28 +28,51 @@ describe("AaveLoop E2E Tests", () => {
     await aaveloop.methods.enterPosition(20).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
 
-    await advanceTime(86400);
+    await advanceTime(86400); // 1 day
 
-    expect(await aaveloop.methods.getBalanceReward().call()).bignumber.greaterThan(zero);
-
-    console.log("Reward", await aaveloop.methods.getBalanceReward().call());
+    const rewardBalance = await aaveloop.methods.getBalanceReward().call();
+    expect(rewardBalance).bignumber.greaterThan(zero);
+    console.log("rewards", fmt18(rewardBalance));
 
     await aaveloop.methods.claimRewardsToOwner().send({ from: deployer });
 
-    const rewards = await Tokens.stkAAVE().methods.balanceOf(owner).call();
-    console.log("Reward stkAAVE", rewards);
-
-    expect(rewards).bignumber.greaterThan(zero);
+    const claimedBalance = bn(await Tokens.stkAAVE().methods.balanceOf(owner).call());
+    expect(claimedBalance).bignumber.greaterThan(zero).closeTo(rewardBalance, bn18("0.1"));
+    console.log("reward stkAAVE", fmt18(claimedBalance));
 
     await aaveloop.methods.exitPosition().send({ from: owner });
-    expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(POSITION);
+    const endBalanceUSDC = bn(await aaveloop.methods.getBalanceUSDC().call());
+    expect(endBalanceUSDC).bignumber.greaterThan(POSITION);
 
-    console.log("Balance USDC", await aaveloop.methods.getBalanceUSDC().call());
+    console.log("USDC", fmt6(await aaveloop.methods.getBalanceUSDC().call()));
 
     expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
     expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
     expect(await aaveloop.methods.getPercentLTV().call()).bignumber.zero;
+
+    printAPY(endBalanceUSDC, claimedBalance);
   });
 
-  // Utilization high / low
+  // TODO Utilization high / low
 });
+
+function printAPY(endBalanceUSDC: BN, claimedBalance: BN) {
+  console.log("=================");
+  const profitFromInterest = endBalanceUSDC.sub(bn6(POSITION));
+  console.log("profit from interest", fmt6(profitFromInterest));
+  const stkAAVEPrice = 480;
+  console.log("assuming stkAAVE price in USD", stkAAVEPrice, "$");
+  const profitFromRewards = claimedBalance.muln(stkAAVEPrice).div(bn6("1,000,000")); // 18->6 decimals
+  console.log("profit from rewards", fmt6(profitFromRewards));
+  const profit = profitFromInterest.add(profitFromRewards);
+
+  const dailyRate = profit.mul(bn6("1")).div(bn6(POSITION));
+  console.log("dailyRate:", fmt6(dailyRate.muln(100)), "%");
+
+  const APR = dailyRate.muln(365);
+  console.log("result APR: ", fmt6(APR.muln(100)), "%");
+
+  const APY = Math.pow(1 + parseFloat(fmt6(dailyRate)), 365) - 1;
+  console.log("result APY: ", APY * 100, "%");
+  console.log("=================");
+}
