@@ -35,7 +35,6 @@ contract AaveLoop is Ownable {
     constructor(address owner) {
         transferOwnership(owner);
         IERC20(USDC).safeApprove(LENDING_POOL, type(uint256).max);
-        IERC20(AUSDC).safeApprove(LENDING_POOL, type(uint256).max);
     }
 
     // --- views ---
@@ -52,30 +51,14 @@ contract AaveLoop is Ownable {
         return IERC20(USDC).balanceOf(address(this));
     }
 
-    function getHealthFactor() public view returns (uint256) {
-        (, , , , , uint256 healthFactor) = getUserAccountData();
-        return healthFactor;
-    }
-
     function getPercentLTV() public view returns (uint256) {
-        (, , , , uint256 ltv,) = getUserAccountData();
-        return ltv * 10;
-        // from 10,000 to PCM_BASE
+        (, , , , uint256 ltv, ) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
+        return ltv * 10; // from 10,000 to PCM_BASE
     }
 
-    function getUserAccountData()
-    public
-    view
-    returns (
-        uint256 totalCollateralETH,
-        uint256 totalDebtETH,
-        uint256 availableBorrowsETH,
-        uint256 currentLiquidationThreshold,
-        uint256 ltv,
-        uint256 healthFactor
-    )
-    {
-        return ILendingPool(LENDING_POOL).getUserAccountData(address(this));
+    function getHealthFactor() public view returns (uint256) {
+        (, , , , , uint256 healthFactor) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
+        return healthFactor;
     }
 
     // --- unrestricted actions ---
@@ -93,8 +76,7 @@ contract AaveLoop is Ownable {
         for (uint256 i = 0; i < iterations; i++) {
             _deposit(balanceUSDC);
             uint256 borrowAmount = (balanceUSDC * getPercentLTV()) / BASE_PERCENT;
-            _borrow(borrowAmount - 1e6);
-            // $1 buffer for rounding errors
+            _borrow(borrowAmount - 1e6); // $1 buffer for rounding errors
             balanceUSDC = getBalanceUSDC();
         }
 
@@ -109,41 +91,6 @@ contract AaveLoop is Ownable {
         }
         _withdraw(type(uint256).max);
     }
-
-    //
-    //    // --- withdraw assets by owner ---
-    //
-    //    function claimAndTransferAllCompToOwner() public onlyManagerOrOwner {
-    //        uint256 balance = claimComp();
-    //        if (balance > 0) {
-    //            IERC20(COMP).safeTransfer(owner(), balance);
-    //        }
-    //    }
-    //
-    //    function safeTransferUSDCToOwner() public onlyOwner {
-    //        uint256 usdcBalance = underlyingBalance();
-    //        if (usdcBalance > 0) {
-    //            IERC20(USDC).safeTransfer(owner(), usdcBalance);
-    //        }
-    //    }
-    //
-    //    function safeTransferAssetToOwner(address src) public onlyOwner {
-    //        uint256 balance = IERC20(src).balanceOf(address(this));
-    //        if (balance > 0) {
-    //            IERC20(src).safeTransfer(owner(), balance);
-    //        }
-    //    }
-    //
-    //    function transferFrom(address src_, uint256 amount_) public onlyOwner {
-    //        IERC20(USDC).transferFrom(src_, address(this), amount_);
-    //    }
-    //
-    // function setApprove() public onlyManagerOrOwner {
-    //        if (IERC20(USDC).allowance(address(this), CUSDC) != uint256(-1)) {
-    //            IERC20(USDC).approve(CUSDC, uint256(-1));
-    //        }
-    //    }
-    //
 
     function _deposit(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).deposit(USDC, amount, address(this), 0);
@@ -165,33 +112,18 @@ contract AaveLoop is Ownable {
         emit LogRepay(amount);
     }
 
-    //    function redeemCToken(uint256 amount) public onlyManagerOrOwner {
-    //        require(CERC20(CUSDC).redeem(amount) == 0, "redeem failed");
-    //        emit LogRedeem(CUSDC, address(this), amount);
-    //    }
-    //
-    //    function redeemUnderlying(uint256 amount) public onlyManagerOrOwner {
-    //        require(CERC20(CUSDC).redeemUnderlying(amount) == 0, "redeemUnderlying failed");
-    //        emit LogRedeemUnderlying(CUSDC, address(this), amount);
-    //    }
-    //
-    //    function repayBorrow(uint256 amount) public onlyManagerOrOwner {
-    //        require(CERC20(CUSDC).repayBorrow(amount) == 0, "repayBorrow failed");
-    //        emit LogRepay(CUSDC, address(this), amount);
-    //    }
-    //
-    //    function repayBorrowAll() public onlyManagerOrOwner {
-    //        uint256 usdcBalance = underlyingBalance();
-    //        if (usdcBalance > borrowBalanceCurrent()) {
-    //            require(CERC20(CUSDC).repayBorrow(uint256(-1)) == 0, "repayBorrow -1 failed");
-    //            emit LogRepay(CUSDC, address(this), uint256(-1));
-    //        } else {
-    //            require(CERC20(CUSDC).repayBorrow(usdcBalance) == 0, "repayBorrow failed");
-    //            emit LogRepay(CUSDC, address(this), usdcBalance);
-    //        }
-    //    }
     //
     //    // --- emergency ---
+    //
+    //
+    //    // --- withdraw assets by owner ---
+
+    //    function safeTransferAssetToOwner(address src) public onlyOwner {
+    //        uint256 balance = IERC20(src).balanceOf(address(this));
+    //        if (balance > 0) {
+    //            IERC20(src).safeTransfer(owner(), balance);
+    //        }
+    //    }
     //
     //    function emergencyTransferAsset(
     //        address asset_,
