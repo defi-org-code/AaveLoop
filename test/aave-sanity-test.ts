@@ -10,7 +10,9 @@ describe("AaveLoop Sanity Tests", () => {
     expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
     expect(await aaveloop.methods.owner().call()).eq(owner);
     const result = await aaveloop.methods.getPositionData().call();
-    expect(result.healthFactor).bignumber.eq("");
+    expect(result.healthFactor).bignumber.eq(
+      "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+    ); // Max Value
     expect(result.ltv).bignumber.zero;
     await aaveloop.methods.claimRewardsToOwner().send();
     expect(await Tokens.stkAAVE().methods.balanceOf(owner).call()).bignumber.zero;
@@ -25,7 +27,7 @@ describe("AaveLoop Sanity Tests", () => {
     await expectRevert(() => aaveloop.methods._withdraw(100).send());
 
     await expectRevert(() => aaveloop.methods.enterPosition(1).send());
-    await expectRevert(() => aaveloop.methods.exitPosition().send());
+    await expectRevert(() => aaveloop.methods.exitPosition(20).send());
 
     await expectRevert(() => aaveloop.methods.withdrawToOwner(Tokens.USDC().address).send());
     await expectRevert(() => aaveloop.methods.emergencyFunctionCall("", "").send());

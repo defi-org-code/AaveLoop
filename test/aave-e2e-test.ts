@@ -12,7 +12,7 @@ describe("AaveLoop E2E Tests", () => {
     await aaveloop.methods.enterPosition(20).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
 
-    await aaveloop.methods.exitPosition().send({ from: owner });
+    await aaveloop.methods.exitPosition(20).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call())
       .bignumber.closeTo(bn6(POSITION), bn6("1"))
       .greaterThan(POSITION);
@@ -41,7 +41,7 @@ describe("AaveLoop E2E Tests", () => {
     expect(claimedBalance).bignumber.greaterThan(zero).closeTo(rewardBalance, bn18("0.1"));
     console.log("reward stkAAVE", fmt18(claimedBalance));
 
-    await aaveloop.methods.exitPosition().send({ from: owner });
+    await aaveloop.methods.exitPosition(20).send({ from: owner });
     const endBalanceUSDC = bn(await aaveloop.methods.getBalanceUSDC().call());
     expect(endBalanceUSDC).bignumber.greaterThan(POSITION);
 

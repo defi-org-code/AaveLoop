@@ -82,20 +82,22 @@ contract AaveLoop is Ownable {
             _deposit(balanceUSDC);
             (, , , , uint256 ltv, ) = getPositionData();
             uint256 borrowAmount = (balanceUSDC * ltv) / BASE_PERCENT;
-            _borrow(borrowAmount);
+            _borrow(borrowAmount - 1e6); // $1 buffer for sanity (rounding error)
             balanceUSDC = getBalanceUSDC();
         }
 
         _deposit(balanceUSDC);
     }
 
-    function exitPosition() external onlyOwner {
-        while (getBalanceDebtToken() > 0) {
+    function exitPosition(uint256 maxIterations, uint256 percentageToWithdraw) external onlyOwner {
+        for (uint256 index = 0; getBalanceDebtToken() > 0 && index < maxIterations; index++) {
             (uint256 totalCollateralETH, uint256 totalDebtETH, , , uint256 ltv, ) = getPositionData();
 
             uint256 debtWithBufferETH = (totalDebtETH * BASE_PERCENT) / ltv;
             uint256 debtSafeRatio = ((totalCollateralETH - debtWithBufferETH) * 1 ether) / totalCollateralETH;
             uint256 amountToWithdraw = (getBalanceAUSDC() * debtSafeRatio) / 1 ether;
+
+            console.log("iteration", index, amountToWithdraw);
 
             _withdraw(amountToWithdraw);
             _repay(getBalanceUSDC());
