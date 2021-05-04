@@ -42,6 +42,9 @@ export async function resetNetworkFork(blockNumber: number = forkingBlockNumber(
   console.log("block", await web3().eth.getBlockNumber());
 }
 
+/**
+ * mines blocks
+ */
 export async function advanceTime(seconds: number) {
   console.log(`advancing time by ${seconds} seconds`);
   const startBlock = await web3().eth.getBlockNumber();
@@ -53,6 +56,25 @@ export async function advanceTime(seconds: number) {
     await network().provider.send("evm_increaseTime", [secondsPerBlock]);
     await network().provider.send("evm_mine", [1 + startBlockTime + secondsPerBlock * i]);
   }
+  const nowBlock = await web3().eth.getBlockNumber();
+  console.log("was block", startBlock.toFixed(), "now block", nowBlock);
+  console.log(
+    "was block time",
+    startBlockTime.toFixed(),
+    "now block time",
+    (await web3().eth.getBlock(nowBlock)).timestamp
+  );
+}
+
+/**
+ * mines a single block and adding seconds to current timestamp
+ */
+export async function jumpTime(seconds: number) {
+  console.log(`jumping time by ${seconds} seconds`);
+  const startBlock = await web3().eth.getBlockNumber();
+  const startBlockTime = (await web3().eth.getBlock(startBlock)).timestamp;
+  await network().provider.send("evm_increaseTime", [seconds]);
+  await network().provider.send("evm_mine", [startBlockTime + seconds]);
   const nowBlock = await web3().eth.getBlockNumber();
   console.log("was block", startBlock.toFixed(), "now block", nowBlock);
   console.log(

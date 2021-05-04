@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import { aaveloop, deployer, owner, POSITION } from "./test-base";
 import { Tokens } from "../src/token";
-import { bn, bn18, bn6, fmt18, fmt6, zero } from "../src/utils";
-import { advanceTime } from "../src/network";
+import { bn, bn18, bn6, ether, fmt18, fmt6, zero } from "../src/utils";
+import { advanceTime, jumpTime } from "../src/network";
 import BN from "bn.js";
 
 describe("AaveLoop E2E Tests", () => {
@@ -13,9 +13,7 @@ describe("AaveLoop E2E Tests", () => {
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
 
     await aaveloop.methods.exitPosition(20).send({ from: owner });
-    expect(await aaveloop.methods.getBalanceUSDC().call())
-      .bignumber.closeTo(bn6(POSITION), bn6("1"))
-      .greaterThan(POSITION);
+    expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(bn6(POSITION));
 
     expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
     expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
@@ -41,17 +39,46 @@ describe("AaveLoop E2E Tests", () => {
     expect(claimedBalance).bignumber.greaterThan(zero).closeTo(rewardBalance, bn18("0.1"));
     console.log("reward stkAAVE", fmt18(claimedBalance));
 
-    await aaveloop.methods.exitPosition(20).send({ from: owner });
+    await aaveloop.methods.exitPosition(21).send({ from: owner });
     const endBalanceUSDC = bn(await aaveloop.methods.getBalanceUSDC().call());
     expect(endBalanceUSDC).bignumber.greaterThan(POSITION);
-
-    console.log("USDC", fmt6(await aaveloop.methods.getBalanceUSDC().call()));
 
     expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
     expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
     expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
 
     printAPY(endBalanceUSDC, claimedBalance);
+  });
+
+  it("partial exits due to gas limits", async () => {
+    await Tokens.USDC().methods.transfer(aaveloop.options.address, bn6(POSITION)).send({ from: owner });
+
+    await aaveloop.methods.enterPosition(20).send({ from: owner });
+    const startLeverage = await aaveloop.methods.getBalanceDebtToken().call();
+    await aaveloop.methods.exitPosition(10).send({ from: owner });
+    const midLeverage = await aaveloop.methods.getBalanceDebtToken().call();
+    expect(midLeverage).bignumber.gt(zero).lt(startLeverage);
+    await aaveloop.methods.exitPosition(15).send({ from: owner });
+
+    expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(POSITION);
+    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
+    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
+    expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
+  });
+
+  it("health factor decay rate", async () => {
+    await Tokens.USDC().methods.transfer(aaveloop.options.address, bn6(POSITION)).send({ from: owner });
+    await aaveloop.methods.enterPosition(12).send({ from: owner });
+
+    const startHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
+
+    const year = 60 * 60 * 24 * 365;
+    await jumpTime(year);
+
+    const endHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
+
+    console.log("health factor after 1 year:", fmt18(startHF), fmt18(endHF));
+    expect(endHF).bignumber.lt(startHF).gt(ether);
   });
 
   // TODO Utilization high / low

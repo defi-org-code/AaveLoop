@@ -28,16 +28,14 @@ describe("AaveLoop Emergency Tests", () => {
     await aaveloop.methods.emergencyFunctionCall(Tokens.USDC().options.address, encoded).send({ from: owner });
 
     expect(await Tokens.USDC().methods.balanceOf(aaveloop.options.address).call()).bignumber.zero;
-    expect(await Tokens.USDC().methods.balanceOf(owner).call()).bignumber.gt(POSITION);
+    expect(await Tokens.USDC().methods.balanceOf(owner).call()).bignumber.eq(bn6(POSITION));
   });
 
   it("emergency function delegate call", async () => {
     await Tokens.USDC().methods.transfer(aaveloop.options.address, bn6(POSITION)).send({ from: owner });
 
     const encoded = await aaveloop.methods.renounceOwnership().encodeABI();
-    const result = await aaveloop.methods
-      .emergencyFunctionDelegateCall(aaveloop.options.address, encoded)
-      .send({ from: owner });
+    await aaveloop.methods.emergencyFunctionDelegateCall(aaveloop.options.address, encoded).send({ from: owner });
 
     expect(await aaveloop.methods.owner().call()).eq("0x0000000000000000000000000000000000000000");
   });
