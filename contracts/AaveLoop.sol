@@ -20,7 +20,7 @@ contract AaveLoop is Ownable {
     address public constant REWARD_TOKEN = address(0x4da27a545c0c5B758a6BA100e3a049001de870f5); // stkAAVE
     address public constant DEBT_TOKEN = address(0x619beb58998eD2278e08620f97007e1116D5D25b); // Aave variable debt bearing USDC (variableD...)
     address public constant LIQUIDITY_MINING = address(0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5); // IncentivesController
-    uint256 public constant BASE_PERCENT = 100_000; // percentmil == 1/100,000
+    uint256 public constant BASE_PERCENT = 10_000;
 
     // ---- events ----
     event LogDeposit(uint256 amount);
@@ -53,14 +53,19 @@ contract AaveLoop is Ownable {
         return IAaveIncentivesController(LIQUIDITY_MINING).getRewardsBalance(getRewardTokenAssets(), address(this));
     }
 
-    function getPercentLTV() public view returns (uint256) {
-        (, , , , uint256 ltv, ) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
-        return ltv * 10; // from 10,000 to PCM_BASE
-    }
-
-    function getHealthFactor() public view returns (uint256) {
-        (, , , , , uint256 healthFactor) = ILendingPool(LENDING_POOL).getUserAccountData(address(this));
-        return healthFactor;
+    function getPositionData()
+        public
+        view
+        returns (
+            uint256 totalCollateralETH,
+            uint256 totalDebtETH,
+            uint256 availableBorrowsETH,
+            uint256 currentLiquidationThreshold,
+            uint256 ltv,
+            uint256 healthFactor
+        )
+    {
+        return ILendingPool(LENDING_POOL).getUserAccountData(address(this));
     }
 
     function claimRewardsToOwner() external {
@@ -75,7 +80,8 @@ contract AaveLoop is Ownable {
 
         for (uint256 i = 0; i < iterations; i++) {
             _deposit(balanceUSDC);
-            uint256 borrowAmount = (balanceUSDC * getPercentLTV()) / BASE_PERCENT;
+            (, , , , uint256 ltv, ) = getPositionData();
+            uint256 borrowAmount = (balanceUSDC * ltv) / BASE_PERCENT;
             _borrow(borrowAmount);
             balanceUSDC = getBalanceUSDC();
         }
@@ -85,7 +91,12 @@ contract AaveLoop is Ownable {
 
     function exitPosition() external onlyOwner {
         while (getBalanceDebtToken() > 0) {
-            uint256 amountToWithdraw = getBalanceAUSDC() - ((getBalanceDebtToken() * BASE_PERCENT) / getPercentLTV());
+            (uint256 totalCollateralETH, uint256 totalDebtETH, , , uint256 ltv, ) = getPositionData();
+
+            uint256 debtWithBufferETH = (totalDebtETH * BASE_PERCENT) / ltv;
+            uint256 debtSafeRatio = ((totalCollateralETH - debtWithBufferETH) * 1 ether) / totalCollateralETH;
+            uint256 amountToWithdraw = (getBalanceAUSDC() * debtSafeRatio) / 1 ether;
+
             _withdraw(amountToWithdraw);
             _repay(getBalanceUSDC());
         }

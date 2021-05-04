@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { aaveloop, deployer, owner, POSITION } from "./test-base";
 import { Tokens } from "../src/token";
-import { bn, bn18, bn6, ether, fmt18, fmt6, zero } from "../src/utils";
+import { bn, bn18, bn6, fmt18, fmt6, zero } from "../src/utils";
 import { advanceTime } from "../src/network";
 import BN from "bn.js";
 
@@ -19,7 +19,7 @@ describe("AaveLoop E2E Tests", () => {
 
     expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
     expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
-    expect(await aaveloop.methods.getPercentLTV().call()).bignumber.zero;
+    expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
   });
 
   it("Show me the money", async () => {
@@ -28,7 +28,8 @@ describe("AaveLoop E2E Tests", () => {
     await aaveloop.methods.enterPosition(20).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
 
-    await advanceTime(86400); // 1 day
+    const day = 60 * 60 * 24;
+    await advanceTime(day);
 
     const rewardBalance = await aaveloop.methods.getBalanceReward().call();
     expect(rewardBalance).bignumber.greaterThan(zero);
@@ -48,7 +49,7 @@ describe("AaveLoop E2E Tests", () => {
 
     expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
     expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
-    expect(await aaveloop.methods.getPercentLTV().call()).bignumber.zero;
+    expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
 
     printAPY(endBalanceUSDC, claimedBalance);
   });

@@ -6,14 +6,12 @@ import { Tokens } from "../src/token";
 import { Wallet } from "../src/wallet";
 import { expect } from "chai";
 import { AaveLoop } from "../typechain-hardhat/AaveLoop";
-import { TestHelpers } from "../typechain-hardhat/TestHelpers";
 
-export const usdcWhale = "0xF977814e90dA44bFA03b6295A0616a897441aceC"; // binance8
+export const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8";
 
 export let deployer: string;
 export let owner: string;
 export let aaveloop: AaveLoop;
-export let testHelpers: TestHelpers;
 export const POSITION = "20,000,000";
 
 /**
@@ -32,13 +30,12 @@ beforeEach(async () => {
 async function doBeforeEach() {
   await resetNetworkFork();
   await impersonate(usdcWhale);
-  tag(usdcWhale, "USDC whale (binance8)");
+  tag(usdcWhale, "USDC whale");
 
   await initWallet();
 
   owner = (await Wallet.fake(1)).address;
   aaveloop = await deployContract<AaveLoop>("AaveLoop", deployer, [owner]);
-  testHelpers = await deployContract<TestHelpers>("TestHelpers", deployer);
 
   await ensureBalanceUSDC(owner, bn6(POSITION));
 }
