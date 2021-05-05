@@ -12,7 +12,8 @@ export const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8";
 export let deployer: string;
 export let owner: string;
 export let aaveloop: AaveLoop;
-export const POSITION = "20,000,000";
+export const POSITION = "5,000,000";
+export const MAX_VALUE = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 /**
  * test case state init

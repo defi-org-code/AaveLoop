@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { aaveloop, expectRevert, owner, POSITION } from "./test-base";
+import { aaveloop, expectRevert, MAX_VALUE, owner, POSITION } from "./test-base";
 import { Tokens } from "../src/token";
 import { bn6 } from "../src/utils";
 
@@ -10,9 +10,7 @@ describe("AaveLoop Sanity Tests", () => {
     expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
     expect(await aaveloop.methods.owner().call()).eq(owner);
     const result = await aaveloop.methods.getPositionData().call();
-    expect(result.healthFactor).bignumber.eq(
-      "115792089237316195423570985008687907853269984665640564039457584007913129639935"
-    ); // Max Value
+    expect(result.healthFactor).bignumber.eq(MAX_VALUE);
     expect(result.ltv).bignumber.zero;
     await aaveloop.methods.claimRewardsToOwner().send();
     expect(await Tokens.stkAAVE().methods.balanceOf(owner).call()).bignumber.zero;

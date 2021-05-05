@@ -2,17 +2,17 @@ import { expect } from "chai";
 import { aaveloop, deployer, owner, POSITION } from "./test-base";
 import { Tokens } from "../src/token";
 import { bn, bn18, bn6, ether, fmt18, fmt6, zero } from "../src/utils";
-import { advanceTime, jumpTime } from "../src/network";
+import { jumpTime } from "../src/network";
 import BN from "bn.js";
 
 describe("AaveLoop E2E Tests", () => {
   it("happy path", async () => {
     await Tokens.USDC().methods.transfer(aaveloop.options.address, bn6(POSITION)).send({ from: owner });
 
-    await aaveloop.methods.enterPosition(20).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
 
-    await aaveloop.methods.exitPosition(20).send({ from: owner });
+    await aaveloop.methods.exitPosition(14).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(bn6(POSITION));
 
     expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
@@ -23,11 +23,11 @@ describe("AaveLoop E2E Tests", () => {
   it("Show me the money", async () => {
     await Tokens.USDC().methods.transfer(aaveloop.options.address, bn6(POSITION)).send({ from: owner });
 
-    await aaveloop.methods.enterPosition(20).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
 
     const day = 60 * 60 * 24;
-    await advanceTime(day);
+    await jumpTime(day);
 
     const rewardBalance = await aaveloop.methods.getBalanceReward().call();
     expect(rewardBalance).bignumber.greaterThan(zero);
@@ -39,7 +39,7 @@ describe("AaveLoop E2E Tests", () => {
     expect(claimedBalance).bignumber.greaterThan(zero).closeTo(rewardBalance, bn18("0.1"));
     console.log("reward stkAAVE", fmt18(claimedBalance));
 
-    await aaveloop.methods.exitPosition(21).send({ from: owner });
+    await aaveloop.methods.exitPosition(15).send({ from: owner });
     const endBalanceUSDC = bn(await aaveloop.methods.getBalanceUSDC().call());
     expect(endBalanceUSDC).bignumber.greaterThan(POSITION);
 
@@ -68,7 +68,7 @@ describe("AaveLoop E2E Tests", () => {
 
   it("health factor decay rate", async () => {
     await Tokens.USDC().methods.transfer(aaveloop.options.address, bn6(POSITION)).send({ from: owner });
-    await aaveloop.methods.enterPosition(12).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
 
     const startHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
 
@@ -81,14 +81,13 @@ describe("AaveLoop E2E Tests", () => {
     expect(endHF).bignumber.lt(startHF).gt(ether);
   });
 
-  // TODO Utilization high / low
 });
 
 function printAPY(endBalanceUSDC: BN, claimedBalance: BN) {
   console.log("=================");
   const profitFromInterest = endBalanceUSDC.sub(bn6(POSITION));
   console.log("profit from interest", fmt6(profitFromInterest));
-  const stkAAVEPrice = 480;
+  const stkAAVEPrice = 470;
   console.log("assuming stkAAVE price in USD", stkAAVEPrice, "$");
   const profitFromRewards = claimedBalance.muln(stkAAVEPrice).div(bn6("1,000,000")); // 18->6 decimals
   console.log("profit from rewards", fmt6(profitFromRewards));

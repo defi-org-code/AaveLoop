@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./IAaveInterfaces.sol";
 
-import "hardhat/console.sol"; // TODO remove
-
 contract AaveLoop is Ownable {
     using SafeERC20 for IERC20;
 
