@@ -34,16 +34,9 @@ To see all event logs pass `--logs` to the test command.
 
 It's recommended to take the ABI created during deployment and upload it as private [custom ABI](https://info.etherscan.com/custom-abi/) to Etherscan and this way we can easily use Etherscan's read/write interface (with Trezor) without publishing the contract source. (pass false at contract deployment to skip source upload).
 
-## Gas costs
-
-- Entering/exiting with $1M inside (with 14 iterations) takes ~3M gas
-- Entering/exiting with $5M inside (with 14 iterations) also takes ~5.5M gas
-- Claim COMP takes ~1M gas
-
 ## Monitoring against liquidations
 
-- Call `getPositionData` to see that the liquidity is not dropping to `1` (approaching liquidation). The liquidity should usually increase over time since combined interest rate should be positive.
-- For more exact results, it's better to static call (from a script) `getAccountLiquidityWithInterest` since this takes the latest interest into account too.
+- Call `getPositionData` to see that the liquidity is not dropping to `1` (approaching liquidation).
 
 ## Emergencies
 
