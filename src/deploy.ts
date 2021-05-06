@@ -17,7 +17,7 @@ export async function deploy(
   const deployer = await askDeployer();
   const gasPrice = await askGasPrice();
 
-  await confirm(deployer, contractName, constructorArgs, gasLimit, gasPrice);
+  await confirm(deployer, contractName, constructorArgs, gasLimit, gasPrice, fmt18(initialETH), uploadSources);
 
   const backup = backupArtifacts(timestamp);
 
@@ -71,12 +71,20 @@ async function askGasPrice() {
   return gas.toString();
 }
 
-async function confirm(account: string, contractName: string, args: string[], gasLimit: number, gasPrice: number) {
+async function confirm(
+  account: string,
+  contractName: string,
+  args: string[],
+  gasLimit: number,
+  gasPrice: number,
+  initialETH: string,
+  uploadSources: boolean
+) {
   const balance = fmt18(await web3().eth.getBalance(account));
   const chainId = await web3().eth.getChainId();
 
   console.log("deploying!");
-  console.log({ chainId, account, balance, contractName, args, gasLimit, gasPrice });
+  console.log({ chainId, account, balance, contractName, args, gasLimit, gasPrice, initialETH, uploadSources });
   const { ok } = await prompts({
     type: "confirm",
     name: "ok",
