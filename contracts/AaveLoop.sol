@@ -66,6 +66,8 @@ contract AaveLoop is Ownable {
         return ILendingPool(LENDING_POOL).getUserAccountData(address(this));
     }
 
+    // ---- unrestricted ----
+
     function claimRewardsToOwner() external {
         IAaveIncentivesController(LIQUIDITY_MINING).claimRewards(getRewardTokenAssets(), type(uint256).max, owner());
     }
@@ -87,6 +89,9 @@ contract AaveLoop is Ownable {
         _deposit(balanceUSDC);
     }
 
+    /**
+     * maxIterations - zero based max num of loops, can be greater than needed. Supports partial exits.
+     */
     function exitPosition(uint256 maxIterations) external onlyOwner {
         for (uint256 index = 0; getBalanceDebtToken() > 0 && index < maxIterations; index++) {
             (uint256 totalCollateralETH, uint256 totalDebtETH, , , uint256 ltv, ) = getPositionData();
@@ -103,7 +108,7 @@ contract AaveLoop is Ownable {
         }
     }
 
-    // ---- internals ----
+    // ---- internals, public onlyOwner in case of emergency ----
 
     function _deposit(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).deposit(USDC, amount, address(this), 0);

@@ -12,23 +12,20 @@ export const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8";
 export let deployer: string;
 export let owner: string;
 export let aaveloop: AaveLoop;
-export const POSITION = "5,000,000";
+export const POSITION = bn6("5,000,000");
 export const MAX_VALUE = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
-/**
- * test case state init
- */
-beforeEach(async () => {
+export async function initOwnerAndUSDC() {
   while (true) {
     try {
-      return await doBeforeEach();
+      return await doInitState();
     } catch (e) {
       console.error(e, "\ntrying again...");
     }
   }
-});
+}
 
-async function doBeforeEach() {
+async function doInitState() {
   await resetNetworkFork();
   await impersonate(usdcWhale);
   tag(usdcWhale, "USDC whale");
@@ -38,7 +35,7 @@ async function doBeforeEach() {
   owner = (await Wallet.fake(1)).address;
   aaveloop = await deployContract<AaveLoop>("AaveLoop", deployer, [owner]);
 
-  await ensureBalanceUSDC(owner, bn6(POSITION));
+  await ensureBalanceUSDC(owner, POSITION);
 }
 
 async function initWallet() {

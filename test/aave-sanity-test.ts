@@ -1,9 +1,12 @@
 import { expect } from "chai";
-import { aaveloop, expectRevert, MAX_VALUE, owner, POSITION } from "./test-base";
+import { aaveloop, expectRevert, initOwnerAndUSDC, MAX_VALUE, owner, POSITION } from "./test-base";
 import { Tokens } from "../src/token";
-import { bn6 } from "../src/utils";
 
 describe("AaveLoop Sanity Tests", () => {
+  beforeEach(async () => {
+    await initOwnerAndUSDC();
+  });
+
   it("empty state", async () => {
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
     expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
@@ -17,7 +20,7 @@ describe("AaveLoop Sanity Tests", () => {
   });
 
   it("access control", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, bn6(POSITION)).send({ from: owner });
+    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
     await expectRevert(() => aaveloop.methods._deposit(100).send());
     await expectRevert(() => aaveloop.methods._borrow(50).send());
