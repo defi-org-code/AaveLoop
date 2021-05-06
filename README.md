@@ -22,13 +22,14 @@ To see all event logs pass `--logs` to the test command.
    - `git clone`
    - `npm install`
    - `npm run build`
-1. Enter your infura/alchemy endpoint in `hardhat.config.ts` under `networks.eth.url`.
+1. Enter your infura/alchemy endpoint in `hardhat.config.ts` under `networks.eth.url`
 1. Create a new temporary address with a [mnemonic generator](https://iancoleman.io/bip39/) and import the private key to metamask.
 1. Send 0.3ETH (enough for deployment) to the temp address (preferably from a cefi origin like Binance, so that it will be a "clean" account with no history)
 1. `npm run deploy eth` and follow the prompts.
 1. The deploy script will take care of everything, after deployment send any leftover funds back and BURN THE MNEMONIC!
 1. A backup is created under `./deployments` just in case.
 1. The contract is ready to be used by the owner.
+1. To add custom abi to etherscan, use the ABI in `deployments/*/artifacts/contracts/AaveLoop.sol/AaveLoop.json`
 
 ## Management roles
 
