@@ -20,7 +20,7 @@ export function artifact(name: string): Artifact {
 }
 
 export function tag(address: string, name: string) {
-  hre().tracer.nameTags[address] = name;
+  if (hre().tracer) hre().tracer.nameTags[address] = name;
 }
 
 export async function impersonate(address: string) {

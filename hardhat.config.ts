@@ -7,8 +7,15 @@ import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import { configFile } from "./src/configFile";
 import { bn18 } from "./src/utils";
+import { deploy } from "./src/deploy";
 
-task("start", "").setAction(async () => {});
+task("deploy").setAction(async () => {
+  const name = "AaveLoop";
+  const owner = "0xf1fD5233E60E7Ef797025FE9DD066d60d59BcB92";
+  const gasLimit = 3_000_000;
+
+  await deploy(name, [owner], gasLimit);
+});
 
 const config: HardhatUserConfig = {
   solidity: {
