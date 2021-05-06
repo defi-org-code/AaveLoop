@@ -8,11 +8,18 @@ import { task } from "hardhat/config";
 import { configFile } from "./src/configFile";
 import { bn18 } from "./src/utils";
 import { deploy } from "./src/deploy";
+import prompts from "prompts";
+import { web3 } from "./src/network";
 
 task("deploy").setAction(async () => {
   const name = "AaveLoop";
-  const owner = "0xf1fD5233E60E7Ef797025FE9DD066d60d59BcB92";
-  const gasLimit = 3_000_000;
+  const { owner } = await prompts({
+    type: "text",
+    name: "owner",
+    message: "owner",
+    validate: (s) => web3().utils.isAddress(s),
+  });
+  const gasLimit = 2_000_000;
 
   await deploy(name, [owner], gasLimit, 0, false);
 });

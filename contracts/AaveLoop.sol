@@ -108,6 +108,10 @@ contract AaveLoop is Ownable {
         }
     }
 
+    function withdrawAllUSDCToOwner() external onlyOwner {
+        withdrawToOwner(USDC);
+    }
+
     // ---- internals, public onlyOwner in case of emergency ----
 
     function _deposit(uint256 amount) public onlyOwner {
@@ -139,13 +143,9 @@ contract AaveLoop is Ownable {
 
     // ---- emergency ----
 
-    function withdrawToOwner(address asset) external onlyOwner {
+    function withdrawToOwner(address asset) public onlyOwner {
         uint256 balance = IERC20(asset).balanceOf(address(this));
         IERC20(asset).safeTransfer(owner(), balance);
-    }
-
-    function withdrawAllUSDCToOwner() external onlyOwner {
-        withdrawToOwner(USDC);
     }
 
     function emergencyFunctionCall(address target, bytes memory data) external onlyOwner {

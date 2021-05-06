@@ -8,31 +8,32 @@ import { deployContract } from "./extensions";
 
 export async function deploy(
   contractName: string,
-  args: string[] = [],
-  gasLimit: number = 0,
-  initialETH: BN | string | number = zero,
-  uploadSources: boolean = true
+  constructorArgs: string[],
+  gasLimit: number,
+  initialETH: BN | string | number,
+  uploadSources: boolean
 ) {
   const timestamp = new Date().getTime();
   const deployer = await askDeployer();
   const gasPrice = await askGasPrice();
 
-  await confirm(deployer, contractName, args, gasLimit, gasPrice);
+  await confirm(deployer, contractName, constructorArgs, gasLimit, gasPrice);
 
   const backup = backupArtifacts(timestamp);
 
   const result = await deployContract(
     contractName,
     { from: deployer, gas: gasLimit, gasPrice: web3().utils.toWei(gasPrice, "gwei"), value: initialETH },
-    args
+    constructorArgs
   );
   const address = result.options.address;
   execSync(`mv ${backup} ${backup}/../${timestamp}-${address}`);
 
   if (uploadSources) {
+    console.log("uploading sources to etherscan...");
     await hre().run("verify:verify", {
       address: address,
-      constructorArguments: args,
+      constructorArguments: constructorArgs,
     });
   }
 
