@@ -14,7 +14,7 @@ task("deploy").setAction(async () => {
   const owner = "0xf1fD5233E60E7Ef797025FE9DD066d60d59BcB92";
   const gasLimit = 3_000_000;
 
-  await deploy(name, [owner], gasLimit);
+  await deploy(name, [owner], gasLimit, 0, false);
 });
 
 const config: HardhatUserConfig = {

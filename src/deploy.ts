@@ -6,7 +6,13 @@ import { fmt18, zero } from "./utils";
 import { execSync } from "child_process";
 import { deployContract } from "./extensions";
 
-export async function deploy(contractName: string, args: string[] = [], gasLimit: number = 0, initialETH: BN = zero) {
+export async function deploy(
+  contractName: string,
+  args: string[] = [],
+  gasLimit: number = 0,
+  initialETH: BN | string | number = zero,
+  uploadSources: boolean = true
+) {
   const timestamp = new Date().getTime();
   const deployer = await askDeployer();
   const gasPrice = await askGasPrice();
@@ -23,10 +29,12 @@ export async function deploy(contractName: string, args: string[] = [], gasLimit
   const address = result.options.address;
   execSync(`mv ${backup} ${backup}/../${timestamp}-${address}`);
 
-  await hre().run("verify:verify", {
-    address: address,
-    constructorArguments: args,
-  });
+  if (uploadSources) {
+    await hre().run("verify:verify", {
+      address: address,
+      constructorArguments: args,
+    });
+  }
 
   console.log("done");
 }
