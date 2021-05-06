@@ -1,10 +1,9 @@
 import _ from "lodash";
 import { Artifact } from "hardhat/types";
 import { TransactionReceipt } from "web3-core";
-
 const parseReceiptEvents = require("web3-parse-receipt-events");
 
-function hre() {
+export function hre() {
   return require("hardhat");
 }
 

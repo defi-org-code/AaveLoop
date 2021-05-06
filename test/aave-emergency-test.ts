@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import { aaveloop, initOwnerAndUSDC, MAX_VALUE, owner, POSITION } from "./test-base";
-import { Tokens } from "../src/token";
-import { bn6 } from "../src/utils";
+import { aaveloop, expectOutOfPosition, initOwnerAndUSDC, owner, POSITION } from "./test-base";
+import { bn6, max } from "../src/utils";
+import { USDC } from "../src/token";
 
 describe("AaveLoop Emergency Tests", () => {
   beforeEach(async () => {
@@ -9,7 +9,7 @@ describe("AaveLoop Emergency Tests", () => {
   });
 
   it("owner able to call step by step", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
     await aaveloop.methods._deposit(100).send({ from: owner });
     await aaveloop.methods._borrow(50).send({ from: owner });
@@ -20,23 +20,23 @@ describe("AaveLoop Emergency Tests", () => {
   });
 
   it("withdrawToOwner", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-    await aaveloop.methods.withdrawToOwner(Tokens.USDC().address).send({ from: owner });
-    expect(await Tokens.USDC().methods.balanceOf(owner).call()).bignumber.eq(POSITION);
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await aaveloop.methods.withdrawToOwner(USDC().options.address).send({ from: owner });
+    expect(await USDC().methods.balanceOf(owner).call()).bignumber.eq(POSITION);
   });
 
   it("emergency function call", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
-    const encoded = await Tokens.USDC().methods.transfer(owner, POSITION).encodeABI();
-    await aaveloop.methods.emergencyFunctionCall(Tokens.USDC().options.address, encoded).send({ from: owner });
+    const encoded = await USDC().methods.transfer(owner, POSITION).encodeABI();
+    await aaveloop.methods.emergencyFunctionCall(USDC().options.address, encoded).send({ from: owner });
 
-    expect(await Tokens.USDC().methods.balanceOf(aaveloop.options.address).call()).bignumber.zero;
-    expect(await Tokens.USDC().methods.balanceOf(owner).call()).bignumber.eq(POSITION);
+    expect(await USDC().methods.balanceOf(aaveloop.options.address).call()).bignumber.zero;
+    expect(await USDC().methods.balanceOf(owner).call()).bignumber.eq(POSITION);
   });
 
   it("emergency function delegate call", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
     const encoded = await aaveloop.methods.renounceOwnership().encodeABI();
     await aaveloop.methods.emergencyFunctionDelegateCall(aaveloop.options.address, encoded).send({ from: owner });
@@ -45,7 +45,7 @@ describe("AaveLoop Emergency Tests", () => {
   });
 
   it("exit position one by one manually", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
     await aaveloop.methods.enterPosition(5).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
@@ -73,12 +73,10 @@ describe("AaveLoop Emergency Tests", () => {
     await aaveloop.methods._withdraw(bn6("1,000")).send({ from: owner });
     await aaveloop.methods._repay(bn6("1,000")).send({ from: owner });
 
-    await aaveloop.methods._withdraw(MAX_VALUE).send({ from: owner });
+    await aaveloop.methods._withdraw(max).send({ from: owner });
 
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(POSITION);
 
-    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
-    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
-    expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
+    await expectOutOfPosition();
   });
 });

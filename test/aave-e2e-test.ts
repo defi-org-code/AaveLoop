@@ -1,9 +1,9 @@
+import BN from "bn.js";
 import { expect } from "chai";
-import { aaveloop, deployer, initOwnerAndUSDC, owner, POSITION } from "./test-base";
-import { Tokens } from "../src/token";
+import { aaveloop, deployer, expectOutOfPosition, initOwnerAndUSDC, owner, POSITION } from "./test-base";
 import { bn, bn18, bn6, ether, fmt18, fmt6, zero } from "../src/utils";
 import { advanceTime, jumpTime } from "../src/network";
-import BN from "bn.js";
+import { stkAAVE, USDC } from "../src/token";
 
 describe("AaveLoop E2E Tests", () => {
   beforeEach(async () => {
@@ -11,7 +11,7 @@ describe("AaveLoop E2E Tests", () => {
   });
 
   it("happy path", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
     await aaveloop.methods.enterPosition(14).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
@@ -19,13 +19,11 @@ describe("AaveLoop E2E Tests", () => {
     await aaveloop.methods.exitPosition(14).send({ from: owner });
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(POSITION);
 
-    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
-    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
-    expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
+    await expectOutOfPosition();
   });
 
   it("Show me the money", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
     console.log("entering with 14 loops", fmt6(POSITION));
     await aaveloop.methods.enterPosition(14).send({ from: owner });
@@ -41,7 +39,7 @@ describe("AaveLoop E2E Tests", () => {
     console.log("claim rewards");
     await aaveloop.methods.claimRewardsToOwner().send({ from: deployer });
 
-    const claimedBalance = bn(await Tokens.stkAAVE().methods.balanceOf(owner).call());
+    const claimedBalance = bn(await stkAAVE().methods.balanceOf(owner).call());
     expect(claimedBalance).bignumber.greaterThan(zero).closeTo(rewardBalance, bn18("0.1"));
     console.log("reward stkAAVE", fmt18(claimedBalance));
 
@@ -50,15 +48,13 @@ describe("AaveLoop E2E Tests", () => {
     const endBalanceUSDC = bn(await aaveloop.methods.getBalanceUSDC().call());
     expect(endBalanceUSDC).bignumber.greaterThan(POSITION);
 
-    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
-    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
-    expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
+    await expectOutOfPosition();
 
     printAPY(endBalanceUSDC, claimedBalance);
   });
 
   it("partial exits due to gas limits", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
     await aaveloop.methods.enterPosition(20).send({ from: owner });
     const startLeverage = await aaveloop.methods.getBalanceDebtToken().call();
@@ -68,13 +64,11 @@ describe("AaveLoop E2E Tests", () => {
     await aaveloop.methods.exitPosition(100).send({ from: owner });
 
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(POSITION);
-    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
-    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
-    expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
+    await expectOutOfPosition();
   });
 
   it("health factor decay rate", async () => {
-    await Tokens.USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
 
     const startHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);

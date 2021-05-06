@@ -1,11 +1,10 @@
 import Web3 from "web3";
 import BN from "bn.js";
 import { web3 } from "./network";
-import { POSITION } from "../test/test-base";
 
 export const zero = bn("0");
 export const ether = bn18("1");
-export const many = ether.pow(bn(2));
+export const max = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 export function bn(n: BN | string | number): BN {
   if (!n) return zero;
