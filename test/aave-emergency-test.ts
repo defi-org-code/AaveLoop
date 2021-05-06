@@ -20,9 +20,9 @@ describe("AaveLoop Emergency Tests", () => {
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.eq(POSITION);
   });
 
-  it("withdrawToOwner", async () => {
+  it("withdrawAllUSDCToOwner", async () => {
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-    await aaveloop.methods.withdrawToOwner(USDC().options.address).send({ from: owner });
+    await aaveloop.methods.withdrawAllUSDCToOwner().send({ from: owner });
     expect(await USDC().methods.balanceOf(owner).call()).bignumber.eq(POSITION);
   });
 

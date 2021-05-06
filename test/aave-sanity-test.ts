@@ -30,7 +30,7 @@ describe("AaveLoop Sanity Tests", () => {
     await expectRevert(() => aaveloop.methods.enterPosition(1).send());
     await expectRevert(() => aaveloop.methods.exitPosition(20).send());
 
-    await expectRevert(() => aaveloop.methods.withdrawToOwner(USDC().options.address).send());
+    await expectRevert(() => aaveloop.methods.withdrawAllUSDCToOwner().send());
     await expectRevert(() => aaveloop.methods.emergencyFunctionCall("", "").send());
     await expectRevert(() => aaveloop.methods.emergencyFunctionDelegateCall("", "").send());
   });
