@@ -22,7 +22,6 @@ To see all event logs pass `--logs` to the test command.
    - `git clone`
    - `npm install`
    - `npm run build`
-   - `npm run test`
 1. Create a new temporary address with a [mnemonic generator](https://iancoleman.io/bip39/) and import the private key to metamask.
 1. Send 0.3ETH (enough for deployment) to the temp address (preferably from a cefi origin like Binance, so that it will be a "clean" account with no history)
 1. `npm run deploy eth` and follow the prompts.
