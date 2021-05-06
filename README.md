@@ -18,13 +18,12 @@ To see all event logs pass `--logs` to the test command.
 
 ## Contract deployment
 
-1. Check that `hardhat.config.ts` has all the correct deployment arguments, like constructor args and gas limit and wether or not to upload sources.
-2. Create a new temporary wallet address with a mnemonic generator and import to metamask.
-3. Send some initial ETH to the temp address (preferably from a cefi origin like Binance, so that it will be a "clean" account with no history)
-4. `npm run deploy eth` and follow the prompts.
-5. The deploy script will take care of everything, after deployment send any leftover funds back and BURN THE MNEMONIC!
-6. A backup is created under `./deployments` just in case.
-7. The contract is ready to be used by the owner.
+1. Create a new temporary wallet address with a mnemonic generator and import to metamask.
+2. Send some initial ETH to the temp address (preferably from a cefi origin like Binance, so that it will be a "clean" account with no history)
+3. `npm run deploy eth` and follow the prompts.
+4. The deploy script will take care of everything, after deployment send any leftover funds back and BURN THE MNEMONIC!
+5. A backup is created under `./deployments` just in case.
+6. The contract is ready to be used by the owner.
 
 ## Management roles
 
