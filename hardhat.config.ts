@@ -13,16 +13,22 @@ import { web3 } from "./src/network";
 
 task("deploy").setAction(async () => {
   const name = "AaveLoop";
+  const owner = await askOwner();
+  const gasLimit = 2_000_000;
+
+  await deploy(name, [owner], gasLimit, 0, false);
+});
+
+async function askOwner() {
   const { owner } = await prompts({
     type: "text",
     name: "owner",
     message: "owner",
     validate: (s) => web3().utils.isAddress(s),
   });
-  const gasLimit = 2_000_000;
-
-  await deploy(name, [owner], gasLimit, 0, false);
-});
+  if (!owner) throw new Error("aborted");
+  return owner.toString();
+}
 
 const config: HardhatUserConfig = {
   solidity: {
