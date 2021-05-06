@@ -139,7 +139,7 @@ contract AaveLoop is Ownable {
 
     // ---- emergency ----
 
-    function withdrawToOwner(address asset) public onlyOwner {
+    function withdrawToOwner(address asset) external onlyOwner {
         uint256 balance = IERC20(asset).balanceOf(address(this));
         IERC20(asset).safeTransfer(owner(), balance);
     }
