@@ -2,7 +2,7 @@ import BN from "bn.js";
 import path from "path";
 import prompts from "prompts";
 import { hre, web3 } from "./network";
-import { fmt18, zero } from "./utils";
+import { fmt18 } from "./utils";
 import { execSync } from "child_process";
 import { deployContract } from "./extensions";
 
@@ -38,6 +38,17 @@ export async function deploy(
   }
 
   console.log("done");
+}
+
+export async function askAddress(message: string): Promise<string> {
+  const { address } = await prompts({
+    type: "text",
+    name: "address",
+    message,
+    validate: (s) => web3().utils.isAddress(s),
+  });
+  if (!address) throw new Error("aborted");
+  return address.toString();
 }
 
 function backupArtifacts(timestamp: number) {
@@ -83,12 +94,12 @@ async function confirm(
   const balance = fmt18(await web3().eth.getBalance(account));
   const chainId = await web3().eth.getChainId();
 
-  console.log("deploying!");
+  console.log("DEPLOYING!");
   console.log({ chainId, account, balance, contractName, args, gasLimit, gasPrice, initialETH, uploadSources });
   const { ok } = await prompts({
     type: "confirm",
     name: "ok",
-    message: "all ok?",
+    message: "ALL OK?",
   });
   if (!ok) throw new Error("aborted");
 }

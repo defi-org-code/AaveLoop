@@ -7,28 +7,15 @@ import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import { configFile } from "./src/configFile";
 import { bn18 } from "./src/utils";
-import { deploy } from "./src/deploy";
-import prompts from "prompts";
-import { web3 } from "./src/network";
+import { askAddress, deploy } from "./src/deploy";
 
 task("deploy").setAction(async () => {
   const name = "AaveLoop";
-  const owner = await askOwner();
+  const owner = await askAddress("owner address 0x");
   const gasLimit = 2_000_000;
 
   await deploy(name, [owner], gasLimit, 0, false);
 });
-
-async function askOwner() {
-  const { owner } = await prompts({
-    type: "text",
-    name: "owner",
-    message: "owner",
-    validate: (s) => web3().utils.isAddress(s),
-  });
-  if (!owner) throw new Error("aborted");
-  return owner.toString();
-}
 
 const config: HardhatUserConfig = {
   solidity: {
