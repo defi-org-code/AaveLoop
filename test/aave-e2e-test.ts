@@ -1,6 +1,15 @@
 import BN from "bn.js";
 import { expect } from "chai";
-import { aaveloop, deployer, expectOutOfPosition, initOwnerAndUSDC, owner, POSITION } from "./test-base";
+import {
+  aaveloop,
+  deployer,
+  ensureBalanceUSDC,
+  expectOutOfPosition,
+  expectRevert,
+  initOwnerAndUSDC,
+  owner,
+  POSITION
+} from "./test-base";
 import { bn, bn18, bn6, ether, fmt18, fmt6, zero } from "../src/utils";
 import { advanceTime, jumpTime } from "../src/network";
 import { stkAAVE, USDC } from "../src/token";
@@ -10,7 +19,7 @@ describe("AaveLoop E2E Tests", () => {
     await initOwnerAndUSDC();
   });
 
-  it("happy path", async () => {
+  it("Enter & exit", async () => {
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
 
     await aaveloop.methods.enterPosition(14).send({ from: owner });
@@ -58,9 +67,14 @@ describe("AaveLoop E2E Tests", () => {
 
     await aaveloop.methods.enterPosition(20).send({ from: owner });
     const startLeverage = await aaveloop.methods.getBalanceDebtToken().call();
+    const startHealthFactor = (await aaveloop.methods.getPositionData().call()).healthFactor;
+
     await aaveloop.methods.exitPosition(10).send({ from: owner });
     const midLeverage = await aaveloop.methods.getBalanceDebtToken().call();
+    const midHealthFactor = (await aaveloop.methods.getPositionData().call()).healthFactor;
+
     expect(midLeverage).bignumber.gt(zero).lt(startLeverage);
+    expect(midHealthFactor).bignumber.gt(zero).gt(startHealthFactor);
     await aaveloop.methods.exitPosition(100).send({ from: owner });
 
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(POSITION);
@@ -81,6 +95,63 @@ describe("AaveLoop E2E Tests", () => {
     console.log("health factor after 1 year:", fmt18(startHF), fmt18(endHF), "diff:", fmt18(endHF.sub(startHF)));
     expect(endHF).bignumber.lt(startHF).gt(ether); // must be > 1 to not be liquidated
   });
+
+  it("The real happy path", async () => {
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
+
+    await jumpTime(60 * 60 * 24 * 270);
+
+    const exitLoopCount = 26;
+
+    const receipt = await aaveloop.methods.exitPosition(exitLoopCount).send({ from: owner });
+
+    await expectOutOfPosition();
+
+    console.log(`Using ${exitLoopCount} loops and ${receipt.gasUsed} gas`);
+  });
+
+  it("The real happy path - partials exits", async () => {
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
+
+    await jumpTime(60 * 60 * 24 * 270);
+
+    await aaveloop.methods.exitPosition(14).send({ from: owner });
+
+    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.gt(zero);
+
+    await aaveloop.methods.exitPosition(12).send({ from: owner });
+
+    await expectOutOfPosition();
+  });
+
+  it("Can't exit, needs additional money", async () => {
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
+
+    await jumpTime(60 * 60 * 24 * 365 * 2);
+
+    expect(bn((await aaveloop.methods.getPositionData().call()).healthFactor)).bignumber.gt(zero);
+
+    await expectRevert(() => aaveloop.methods.exitPosition(100).send({ from: owner }));
+
+    expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.eq(zero);
+
+    const additionalMoney = bn6("500,000");
+
+    await ensureBalanceUSDC(owner, additionalMoney);
+    await USDC().methods.transfer(aaveloop.options.address, additionalMoney).send({ from: owner });
+
+    expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.gt(zero);
+
+    await aaveloop.methods._deposit(additionalMoney).send({ from: owner });
+
+    await aaveloop.methods.exitPosition(26).send({ from: owner });
+
+    await expectOutOfPosition();
+  });
+
 });
 
 function printAPY(endBalanceUSDC: BN, claimedBalance: BN) {

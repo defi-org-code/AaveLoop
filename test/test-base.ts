@@ -47,7 +47,7 @@ async function initWallet() {
 /**
  * Takes USDC from whale ensuring minimum amount
  */
-async function ensureBalanceUSDC(address: string, amount: BN) {
+export async function ensureBalanceUSDC(address: string, amount: BN) {
   if (bn(await USDC().methods.balanceOf(address).call()).lt(amount)) {
     await USDC().methods.transfer(address, amount).send({ from: usdcWhale });
   }
