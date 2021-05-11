@@ -100,7 +100,9 @@ describe("AaveLoop E2E Tests", () => {
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
 
-    await jumpTime(60 * 60 * 24 * 270);
+    const daysBeforeDebtBufferIsHigherThanCollateral = 270;
+
+    await jumpTime(60 * 60 * 24 * daysBeforeDebtBufferIsHigherThanCollateral);
 
     const exitLoopCount = 26;
 
@@ -111,15 +113,37 @@ describe("AaveLoop E2E Tests", () => {
     console.log(`Using ${exitLoopCount} loops and ${receipt.gasUsed} gas`);
   });
 
+  it("15% of real happy path, gas shouldn't be higher than 6M", async () => {
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
+
+    const daysBeforeDebtBufferIsHigherThanCollateral = 270;
+
+    await jumpTime(60 * 60 * 24 * (daysBeforeDebtBufferIsHigherThanCollateral * 0.85));
+
+    const receipt = await aaveloop.methods.exitPosition(100).send({ from: owner });
+
+    await expectOutOfPosition();
+
+    expect(bn(receipt.gasUsed)).bignumber.lt(bn6("6,000,000"));
+
+  });
+
   it("The real happy path - partials exits", async () => {
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
 
     await jumpTime(60 * 60 * 24 * 270);
 
+    const startHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
+
     await aaveloop.methods.exitPosition(14).send({ from: owner });
 
+    const endHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
+
+    expect(endHF).bignumber.gt(startHF);
     expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.gt(zero);
+    expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.eq(zero);
 
     await aaveloop.methods.exitPosition(12).send({ from: owner });
 
