@@ -205,22 +205,6 @@ describe("AaveLoop E2E Tests", () => {
 
     await expectOutOfPosition();
   });
-
-  it.only("negative returns", async () => {
-    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-    await aaveloop.methods.enterPosition(14).send({ from: owner });
-
-    await jumpTime(60 * 60 * 24 * 100);
-
-    await aaveloop.methods.exitPosition(50).send({ from: owner });
-
-    const data = await aaveloop.methods.getPositionData().call();
-    console.log(data);
-
-    await expectOutOfPosition();
-
-    console.log("end usdc", fmt6(await aaveloop.methods.getBalanceUSDC().call()));
-  });
 });
 
 function printAPY(endBalanceUSDC: BN, claimedBalance: BN) {
