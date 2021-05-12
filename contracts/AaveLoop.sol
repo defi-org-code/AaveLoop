@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./IAaveInterfaces.sol";
 
+import "hardhat/console.sol";
+
 contract AaveLoop is Ownable {
     using SafeERC20 for IERC20;
 
@@ -35,10 +37,18 @@ contract AaveLoop is Ownable {
 
     // ---- views ----
 
+    /**
+     * returns balance of supplied USDC + interest amount
+     * amount - always in underlying units (USDC)
+     */
     function getBalanceAUSDC() public view returns (uint256) {
         return IERC20(AUSDC).balanceOf(address(this));
     }
 
+    /**
+     * returns balance of debt USDC + interest amount
+     * amount - always in underlying units (USDC)
+     */
     function getBalanceDebtToken() public view returns (uint256) {
         return IERC20(DEBT_TOKEN).balanceOf(address(this));
     }
@@ -47,6 +57,9 @@ contract AaveLoop is Ownable {
         return IERC20(USDC).balanceOf(address(this));
     }
 
+    /**
+    * returns unclaimed reward balance
+    */
     function getBalanceReward() public view returns (uint256) {
         return IAaveIncentivesController(LIQUIDITY_MINING).getRewardsBalance(getRewardTokenAssets(), address(this));
     }
@@ -64,6 +77,16 @@ contract AaveLoop is Ownable {
         )
     {
         return ILendingPool(LENDING_POOL).getUserAccountData(address(this));
+    }
+
+    function getDaysToLiquidation() public view returns (uint256) {
+        (uint256 totalCollateralETH, uint256 totalDebtETH, , , uint256 ltv, ) = getPositionData();
+
+        uint256 debtWithBufferETH = (totalDebtETH * BASE_PERCENT) / ltv;
+
+        DataTypes.ReserveData memory data = ILendingPool(LENDING_POOL).getReserveData(USDC);
+        console.log(data.liquidityIndex);
+        return data.liquidityIndex;
     }
 
     // ---- unrestricted ----
@@ -114,21 +137,33 @@ contract AaveLoop is Ownable {
 
     // ---- internals, public onlyOwner in case of emergency ----
 
+    /**
+     * amount - always in underlying units (USDC)
+     */
     function _deposit(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).deposit(USDC, amount, address(this), 0);
         emit LogDeposit(amount);
     }
 
+    /**
+     * amount - always in underlying units (USDC)
+     */
     function _borrow(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).borrow(USDC, amount, 2, 0, address(this));
         emit LogBorrow(amount);
     }
 
+    /**
+     * amount - always in underlying units (USDC)
+     */
     function _withdraw(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).withdraw(USDC, amount, address(this));
         emit LogWithdraw(amount);
     }
 
+    /**
+     * amount - always in underlying units (USDC)
+     */
     function _repay(uint256 amount) public onlyOwner {
         ILendingPool(LENDING_POOL).repay(USDC, amount, 2, address(this));
         emit LogRepay(amount);

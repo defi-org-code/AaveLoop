@@ -14,18 +14,18 @@ export let owner: string;
 export let aaveloop: AaveLoop;
 export const POSITION = bn6("5,000,000");
 
-export async function initOwnerAndUSDC() {
+export async function initForkOwnerAndUSDC(blockNumber?: number) {
   while (true) {
     try {
-      return await doInitState();
+      return await doInitState(blockNumber);
     } catch (e) {
       console.error(e, "\ntrying again...");
     }
   }
 }
 
-async function doInitState() {
-  await resetNetworkFork();
+async function doInitState(blockNumber?: number) {
+  await resetNetworkFork(blockNumber);
   await impersonate(usdcWhale);
   tag(usdcWhale, "USDC whale");
 

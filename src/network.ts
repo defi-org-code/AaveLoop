@@ -88,7 +88,7 @@ export function parseEvents(abis: any[], address: string, tx: TransactionReceipt
   parseReceiptEvents(abis, address, tx);
 }
 
-function forkingBlockNumber() {
+export function forkingBlockNumber() {
   return _.get(network().config, "forking.blockNumber");
 }
 
