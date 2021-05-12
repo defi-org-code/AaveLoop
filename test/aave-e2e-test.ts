@@ -154,7 +154,7 @@ describe("AaveLoop E2E Tests", () => {
     expect(bn(receipt.gasUsed)).bignumber.lt(bn6("6,000,000"));
   });
 
-  it.only("last day to exit", async () => {
+  it("last day to exit", async () => {
     await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
@@ -171,10 +171,6 @@ describe("AaveLoop E2E Tests", () => {
     await aaveloop.methods.exitPosition(50).send({ from: owner });
 
     await expectOutOfPosition();
-  });
-
-  it("assets block number", async () => {
-    expect(await web3().eth.getBlockNumber()).bignumber.eq(bn("12373298"));
   });
 
   it("Can't exit, needs additional money", async () => {
