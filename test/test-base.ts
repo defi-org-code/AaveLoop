@@ -64,6 +64,7 @@ export async function expectRevert(fn: () => any) {
 }
 
 export async function expectOutOfPosition() {
+  expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.gt(POSITION);
   expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
   expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
   expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
