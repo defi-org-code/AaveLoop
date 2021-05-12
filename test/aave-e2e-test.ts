@@ -119,85 +119,22 @@ describe("AaveLoop E2E Tests", () => {
     expect(positionData.healthFactor).bignumber.greaterThan(ether).closeTo(bn18("1.0674869"), bn18("0.001"));
   });
 
-  it.only("exit after a long time when low liquidity", async () => {
-    // await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-    // await aaveloop.methods.enterPosition(14).send({ from: owner });
-    // const month = 60 * 60 * 24 * 30;
-    //
-    // const r = await aaveloop.methods.getDaysToLiquidation().call();
-    // console.log(r.toString());
+  it.only("days to liquidation", async () => {
+    await initForkOwnerAndUSDC(12373298);
 
-    const aaveOracle = contract<AAVEOracleAbi>(
-      require("../abi/AAVEOracleAbi.json"),
-      "0xA50ba011c48153De246E5192C8f9258A2ba79Ca9"
-    );
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
 
-    async function p() {
-      console.log("USDC", fmt6(await aaveloop.methods.getBalanceUSDC().call()));
-      console.log("aUSDC", fmt6(await aaveloop.methods.getBalanceAUSDC().call()));
-      console.log("debt", fmt6(await aaveloop.methods.getBalanceDebtToken().call()));
-      // const position = await aaveloop.methods.getPositionData().call();
-      // console.log(position);
-      // const priceUSDinETH = bn(await aaveOracle.methods.getAssetPrice(USDC().options.address).call());
-      // console.log(ether.div(priceUSDinETH).toString());
-    }
+    const startHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
 
-    let principal = "1,000";
-    await USDC().methods.transfer(aaveloop.options.address, bn6(principal)).send({ from: owner });
-    console.log("transfer");
-    await p();
-    await aaveloop.methods._deposit(bn6(principal)).send({ from: owner });
-    console.log("deposit");
-    await p();
-    const year = 60 * 60 * 24 * 365;
-    await jumpTime(year);
-    console.log("after a year");
-    await p();
-    const ausdcBalance = bn(await aaveloop.methods.getBalanceAUSDC().call());
-    // await aaveloop.methods._withdraw(ausdcBalance).send({ from: owner });
-    // console.log("withdraw");
-    // await p();
+    const wayAhead = 60 * 60 * 24 * 2500;
+    await jumpTime(wayAhead);
 
-    const borrowAmount = ausdcBalance.muln(80).divn(100);
-    console.log(fmt6(borrowAmount));
-    await aaveloop.methods._borrow(borrowAmount).send({ from: owner });
-    console.log("borrow");
-    await p();
+    const positionData = await aaveloop.methods.getPositionData().call();
+    const endHF = bn(positionData.healthFactor);
 
-    await aaveloop.methods._repay(await aaveloop.methods.getBalanceUSDC().call()).send({ from: owner });
-    console.log("repay");
-    await p();
-
-    await jumpTime(year);
-    console.log("after another year");
-    await p();
-
-    // async function tryExit() {
-    //   try {
-    //     await aaveloop.methods.exitPosition(50).call({ from: owner });
-    //     return true;
-    //   } catch (e) {
-    //     return false;
-    //   }
-    // }
-    //
-    // while (await tryExit()) {
-    //   await jumpTime(month);
-    // }
-
-    // const daysBeforeDebtBufferIsHigherThanCollateral = 270;
-    //
-    // await jumpTime(60 * 60 * 24 * daysBeforeDebtBufferIsHigherThanCollateral);
-    //
-    // const exitLoopCount = 26;
-    //
-    // const receipt = await aaveloop.methods.exitPosition(exitLoopCount).send({ from: owner });
-    //
-    // console.log("USDC balance", await aaveloop.methods.getBalanceUSDC().call());
-    //
-    // await expectOutOfPosition();
-    //
-    // console.log(`Using ${exitLoopCount} loops and ${receipt.gasUsed} gas`);
+    console.log("health factor near liquidation:", fmt18(startHF), fmt18(endHF), "diff:", fmt18(endHF.sub(startHF)));
+    expect(endHF).bignumber.lt(startHF).gt(ether); // must be > 1 to not be liquidated
   });
 
   it("15% of real happy path, gas shouldn't be higher than 6M", async () => {
