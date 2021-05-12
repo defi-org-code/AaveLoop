@@ -178,7 +178,7 @@ describe("AaveLoop E2E Tests", () => {
     await expectOutOfPosition();
   });
 
-  it("Can't exit, needs additional money", async () => {
+  it("can't exit, needs additional money", async () => {
     await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
@@ -193,21 +193,33 @@ describe("AaveLoop E2E Tests", () => {
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.eq(zero);
 
     const additionalMoney = bn6("500,000");
-
     await ensureBalanceUSDC(owner, additionalMoney);
     await USDC().methods.transfer(aaveloop.options.address, additionalMoney).send({ from: owner });
-
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.eq(additionalMoney);
 
     await aaveloop.methods._deposit(additionalMoney).send({ from: owner });
 
-    await aaveloop.methods.exitPosition(26).send({ from: owner });
-
-    console.log("USDC balance", await aaveloop.methods.getBalanceUSDC().call());
+    await aaveloop.methods.exitPosition(100).send({ from: owner });
 
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.gt(POSITION.add(additionalMoney));
 
     await expectOutOfPosition();
+  });
+
+  it.only("negative returns", async () => {
+    await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
+    await aaveloop.methods.enterPosition(14).send({ from: owner });
+
+    await jumpTime(60 * 60 * 24 * 100);
+
+    await aaveloop.methods.exitPosition(50).send({ from: owner });
+
+    const data = await aaveloop.methods.getPositionData().call();
+    console.log(data);
+
+    await expectOutOfPosition();
+
+    console.log("end usdc", fmt6(await aaveloop.methods.getBalanceUSDC().call()));
   });
 });
 
