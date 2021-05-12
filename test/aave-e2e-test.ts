@@ -139,19 +139,24 @@ describe("AaveLoop E2E Tests", () => {
     expect(endHF).bignumber.lt(startHF).gt(ether); // must be > 1 to not be liquidated
   });
 
-  it("15% of real happy path, gas shouldn't be higher than 6M", async () => {
+  it("sane exit gas as function of health factor", async () => {
+    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
+
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
 
-    const daysBeforeDebtBufferIsHigherThanCollateral = 270;
+    const MAX_SANE_GAS = bn6("5,000,000");
 
-    await jumpTime(60 * 60 * 24 * (daysBeforeDebtBufferIsHigherThanCollateral * 0.85));
+    await jumpTime(60 * 60 * 24 * 500);
+
+    console.log("health factor", fmt18((await aaveloop.methods.getPositionData().call()).healthFactor));
 
     const receipt = await aaveloop.methods.exitPosition(100).send({ from: owner });
+    console.log("gasUsed", receipt.gasUsed);
 
     await expectOutOfPosition();
 
-    expect(bn(receipt.gasUsed)).bignumber.lt(bn6("6,000,000"));
+    expect(bn(receipt.gasUsed)).bignumber.lt(MAX_SANE_GAS);
   });
 
   it("last day to exit", async () => {
@@ -174,16 +179,14 @@ describe("AaveLoop E2E Tests", () => {
   });
 
   it("Can't exit, needs additional money", async () => {
+    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
+
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
 
     await jumpTime(60 * 60 * 24 * 365 * 2);
 
-    const r = await aaveloop.methods.getPositionData().call();
-
-    console.log("position date", r);
-
-    expect(bn((await aaveloop.methods.getPositionData().call()).healthFactor)).bignumber.gt(bn("1"));
+    expect(bn((await aaveloop.methods.getPositionData().call()).healthFactor)).bignumber.gt(bn18("1"));
 
     await expectRevert(() => aaveloop.methods.exitPosition(100).send({ from: owner }));
 
