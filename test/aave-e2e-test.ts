@@ -10,11 +10,13 @@ import {
   owner,
   POSITION,
 } from "./test-base";
-import { bn, bn18, bn6, ether, fmt18, fmt6, max, zero } from "../src/utils";
-import { advanceTime, forkingBlockNumber, jumpTime, resetNetworkFork, web3 } from "../src/network";
+import { bn, bn18, bn6, ether, fmt18, fmt6, zero } from "../src/utils";
+import { advanceTime, jumpTime, web3 } from "../src/network";
 import { stkAAVE, USDC } from "../src/token";
 import { contract } from "../src/extensions";
 import { AAVEOracleAbi } from "../typechain-abi/AAVEOracleAbi";
+
+const theSpreadsheetBlockNumber = 12373298;
 
 describe("AaveLoop E2E Tests", () => {
   beforeEach(async () => {
@@ -84,7 +86,7 @@ describe("AaveLoop E2E Tests", () => {
   });
 
   it("1 year in, health factor decay rate", async () => {
-    await initForkOwnerAndUSDC(12373298);
+    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
@@ -119,8 +121,8 @@ describe("AaveLoop E2E Tests", () => {
     expect(positionData.healthFactor).bignumber.greaterThan(ether).closeTo(bn18("1.0674869"), bn18("0.001"));
   });
 
-  it.only("days to liquidation", async () => {
-    await initForkOwnerAndUSDC(12373298);
+  it("days to liquidation", async () => {
+    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
@@ -152,23 +154,21 @@ describe("AaveLoop E2E Tests", () => {
     expect(bn(receipt.gasUsed)).bignumber.lt(bn6("6,000,000"));
   });
 
-  it("The real happy path - partials exits", async () => {
+  it.only("last day to exit", async () => {
+    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
+
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
 
-    await jumpTime(60 * 60 * 24 * 270);
+    await jumpTime(60 * 60 * 24 * 585);
 
-    const startHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
+    const THE_MIN_HEALTH_FACTOR = bn18("1.0625"); // 0.85/0.8
+    expect((await aaveloop.methods.getPositionData().call()).healthFactor).bignumber.closeTo(
+      THE_MIN_HEALTH_FACTOR,
+      bn18("0.001")
+    );
 
-    await aaveloop.methods.exitPosition(14).send({ from: owner });
-
-    const endHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
-
-    expect(endHF).bignumber.gt(startHF);
-    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.gt(zero);
-    expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.eq(zero);
-
-    await aaveloop.methods.exitPosition(12).send({ from: owner });
+    await aaveloop.methods.exitPosition(50).send({ from: owner });
 
     await expectOutOfPosition();
   });
