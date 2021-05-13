@@ -6,17 +6,16 @@ import {
   ensureBalanceUSDC,
   expectOutOfPosition,
   expectRevert,
+  getProtocolInterestRates,
   initForkOwnerAndUSDC,
   owner,
   POSITION,
 } from "./test-base";
 import { bn, bn18, bn6, ether, fmt18, fmt6, zero } from "../src/utils";
-import { advanceTime, jumpTime, web3 } from "../src/network";
+import { advanceTime, jumpTime } from "../src/network";
 import { stkAAVE, USDC } from "../src/token";
-import { contract } from "../src/extensions";
-import { AAVEOracleAbi } from "../typechain-abi/AAVEOracleAbi";
 
-const theSpreadsheetBlockNumber = 12373298;
+const spreadsheetOldBlockNumber = 12373298;
 
 describe("AaveLoop E2E Tests", () => {
   beforeEach(async () => {
@@ -85,66 +84,54 @@ describe("AaveLoop E2E Tests", () => {
     await expectOutOfPosition();
   });
 
-  it("1 year in, health factor decay rate", async () => {
-    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
+  it("1 year in, spreadsheet old compatible rate", async () => {
+    await initForkOwnerAndUSDC(spreadsheetOldBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
 
+    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.closeTo(bn6("24,120,390"), bn6("500"));
+    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.closeTo(bn6("19,120,390"), bn6("500"));
+
     const startHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
 
     const year = 60 * 60 * 24 * 365;
     await jumpTime(year);
 
-    const positionData = await aaveloop.methods.getPositionData().call();
-    const endHF = bn(positionData.healthFactor);
+    const { supplyRate, borrowRate } = await getProtocolInterestRates();
+    console.log("supplyRate", fmt18(supplyRate));
+    console.log("borrowRate", fmt18(borrowRate));
 
-    console.log("health factor after 1 year:", fmt18(startHF), fmt18(endHF), "diff:", fmt18(endHF.sub(startHF)));
-    expect(endHF).bignumber.lt(startHF).gt(ether); // must be > 1 to not be liquidated
-
-    const aaveOracle = contract<AAVEOracleAbi>(
-      require("../abi/AAVEOracleAbi.json"),
-      "0xA50ba011c48153De246E5192C8f9258A2ba79Ca9"
-    );
-    const priceUSDinETH = bn(await aaveOracle.methods.getAssetPrice(USDC().options.address).call());
-
-    const expectedTotalSupplyETH = bn18("25,012,631").mul(priceUSDinETH).div(ether);
-    expect(positionData.totalCollateralETH)
-      .bignumber.greaterThan(zero)
-      .closeTo(expectedTotalSupplyETH, expectedTotalSupplyETH.divn(1000));
-
-    const expectedTotalDebtETH = bn18("19,916,624").mul(priceUSDinETH).div(ether);
-    expect(positionData.totalDebtETH)
-      .bignumber.greaterThan(zero)
-      .closeTo(expectedTotalDebtETH, expectedTotalDebtETH.divn(1000));
-
-    expect(positionData.healthFactor).bignumber.greaterThan(ether).closeTo(bn18("1.0674869"), bn18("0.001"));
+    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.closeTo(bn6("25,012,631"), bn6("500"));
+    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.closeTo(bn6("19,933,436"), bn6("500"));
+    expect((await aaveloop.methods.getPositionData().call()).healthFactor)
+      .bignumber.greaterThan(ether)
+      .lt(startHF)
+      .closeTo(bn18("1.0665867"), bn18("0.00001"));
   });
 
-  it.only("1 year in, health factor decay rate on latest block - for checking spreadsheet", async () => {
+  it("1 year in, health factor decay rate on newer block - for checking spreadsheet", async () => {
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(12).send({ from: owner });
 
-    console.log("Supply in AUSDC before year", await aaveloop.methods.getBalanceAUSDC().call());
-    console.log("Debt in token before year", await aaveloop.methods.getBalanceDebtToken().call());
+    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.closeTo(bn6("23,625,610"), bn6("500"));
+    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.closeTo(bn6("18,625,610"), bn6("500"));
 
     const startHF = bn((await aaveloop.methods.getPositionData().call()).healthFactor);
 
     const year = 60 * 60 * 24 * 365;
     await jumpTime(year);
 
-    const positionData = await aaveloop.methods.getPositionData().call();
-    const endHF = bn(positionData.healthFactor);
-
-    console.log("health factor after 1 year:", fmt18(startHF), fmt18(endHF), "diff:", fmt18(endHF.sub(startHF)));
-    expect(endHF).bignumber.lt(startHF).gt(ether); // must be > 1 to not be liquidated
-
-    console.log("Supply in AUSDC", await aaveloop.methods.getBalanceAUSDC().call());
-    console.log("Debt in token", await aaveloop.methods.getBalanceDebtToken().call());
+    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.closeTo(bn6("26,261,616"), bn6("500"));
+    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.closeTo(bn6("21,360,344"), bn6("500"));
+    expect((await aaveloop.methods.getPositionData().call()).healthFactor)
+      .bignumber.greaterThan(ether)
+      .lt(startHF)
+      .closeTo(bn18("1.0450381"), bn18("0.0001"));
   });
 
   it("days to liquidation", async () => {
-    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
+    await initForkOwnerAndUSDC(spreadsheetOldBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
@@ -162,7 +149,7 @@ describe("AaveLoop E2E Tests", () => {
   });
 
   it("sane exit gas as function of health factor", async () => {
-    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
+    await initForkOwnerAndUSDC(spreadsheetOldBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
@@ -182,7 +169,7 @@ describe("AaveLoop E2E Tests", () => {
   });
 
   it("last day to exit", async () => {
-    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
+    await initForkOwnerAndUSDC(spreadsheetOldBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });
@@ -201,7 +188,7 @@ describe("AaveLoop E2E Tests", () => {
   });
 
   it("can't exit, needs additional money", async () => {
-    await initForkOwnerAndUSDC(theSpreadsheetBlockNumber);
+    await initForkOwnerAndUSDC(spreadsheetOldBlockNumber);
 
     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
     await aaveloop.methods.enterPosition(14).send({ from: owner });

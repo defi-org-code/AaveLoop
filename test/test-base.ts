@@ -1,11 +1,12 @@
 import BN from "bn.js";
-import { bn, bn6 } from "../src/utils";
-import { deployContract } from "../src/extensions";
+import { bn, bn6, bn8 } from "../src/utils";
+import { contract, deployContract } from "../src/extensions";
 import { impersonate, resetNetworkFork, tag } from "../src/network";
 import { Wallet } from "../src/wallet";
 import { expect } from "chai";
 import { AaveLoop } from "../typechain-hardhat/AaveLoop";
 import { USDC } from "../src/token";
+import { ILendingPool } from "../typechain-hardhat/ILendingPool";
 
 export const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8";
 
@@ -68,4 +69,15 @@ export async function expectOutOfPosition() {
   expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
   expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
   expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
+}
+
+export async function getProtocolInterestRates() {
+  const lendingPool = contract<ILendingPool>(
+    require("../artifacts/contracts/IAaveInterfaces.sol/ILendingPool.json").abi,
+    "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9"
+  );
+  const reserveData = await lendingPool.methods.getReserveData(USDC().options.address).call();
+  const supplyRate = bn(reserveData[3]).div(bn8("0.1")); // ray to ether
+  const borrowRate = bn(reserveData[4]).div(bn8("0.1")); // ray to ether
+  return { supplyRate, borrowRate };
 }

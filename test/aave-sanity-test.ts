@@ -10,7 +10,9 @@ describe("AaveLoop Sanity Tests", () => {
 
   it("empty state", async () => {
     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
-    await expectOutOfPosition();
+    expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
+    expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
+    expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
     expect(await aaveloop.methods.owner().call()).eq(owner);
     const result = await aaveloop.methods.getPositionData().call();
     expect(result.healthFactor).bignumber.eq(max);
