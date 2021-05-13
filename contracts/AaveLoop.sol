@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./IAaveInterfaces.sol";
+import "hardhat/console.sol"; // TODO remove
 
 contract AaveLoop is Ownable {
     using SafeERC20 for IERC20;
@@ -98,6 +99,9 @@ contract AaveLoop is Ownable {
         }
 
         _deposit(balanceUSDC);
+
+        console.log("Supply APY", ILendingPool(LENDING_POOL).getReserveData(USDC).currentLiquidityRate);
+        console.log("Borrow APY", ILendingPool(LENDING_POOL).getReserveData(USDC).currentVariableBorrowRate);
     }
 
     /**
