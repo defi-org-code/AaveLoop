@@ -1,6 +1,6 @@
 {
   "name": "aave-loop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/defi-org-code/AaveLoop.git"
@@ -8,46 +8,17 @@
   "author": "Orbs",
   "license": "MIT",
   "dependencies": {
-    "@openzeppelin/contracts": "^4.0.0"
-  },
-  "devDependencies": {
-    "@nomiclabs/hardhat-etherscan": "^2.1.2",
-    "@nomiclabs/hardhat-web3": "^2.0.0",
-    "@typechain/hardhat": "^1.0.1",
-    "@typechain/web3-v1": "^2.2.0",
-    "@types/bn.js": "^5.1.0",
-    "@types/chai": "^4.2.17",
-    "@types/lodash": "^4.14.168",
-    "@types/mocha": "^8.2.2",
-    "@types/node": "^15.0.1",
-    "@types/prompts": "^2.0.10",
-    "bn.js": "^4.12.0",
-    "chai": "^4.3.4",
-    "chai-bn": "^0.2.1",
-    "hardhat": "^2.2.1",
-    "hardhat-gas-reporter": "^1.0.4",
-    "hardhat-tracer": "^1.0.0-alpha.6",
-    "lodash": "^4.17.21",
-    "prettier": "^2.2.1",
-    "prettier-plugin-solidity": "^1.0.0-beta.10",
-    "prompts": "^2.4.1",
-    "solhint": "^3.3.4",
-    "ts-generator": "^0.1.1",
-    "ts-node": "^9.1.1",
-    "typechain": "^4.0.3",
-    "typescript": "^4.2.4",
-    "web3": "^1.3.5",
-    "web3-parse-receipt-events": "^1.0.2"
+    "@defi.org/web3-candies": "2.x"
   },
   "scripts": {
-    "prettier": "prettier --write '{test,src,contracts,scripts}/**/*.{ts,js,json,sol}'",
+    "prettier": "prettier --write '{test,src,contracts}/**/*.{ts,js,json,sol}'",
     "typechain": "typechain --target=web3-v1 --outDir=typechain-abi 'abi/**/*.json' && npx hardhat typechain",
-    "prebuild": "rm -rf artifacts && rm -rf typechain-hardhat && rm -rf typechain-abi && npm run prettier && npm run typechain",
+    "prebuild": "rm -rf artifacts typechain-hardhat typechain-abi && npm run prettier && npm run typechain",
     "build": "npx hardhat compile && npx solhint 'contracts/**/*.sol'",
     "test": "npx hardhat test # --logs",
     "deploy": "npx hardhat deploy --network $1"
   },
-  "config": {
-    "file": "./.config.json"
+  "prettier": {
+    "printWidth": 180
   }
 }

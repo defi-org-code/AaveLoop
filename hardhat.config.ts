@@ -5,21 +5,19 @@ import "hardhat-tracer";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
-import { configFile } from "./src/configFile";
-import { bn18 } from "./src/utils";
-import { askAddress, deploy } from "./src/deploy";
+import { askAddress, bn18, deploy } from "@defi.org/web3-candies";
 
 task("deploy").setAction(async () => {
-  const name = "AaveLoop";
   const owner = await askAddress("owner address 0x");
   const gasLimit = 2_000_000;
-
-  await deploy(name, [owner], gasLimit, 0, false);
+  await deploy("AaveLoop", [owner], gasLimit, 0, true, 0);
 });
+
+const configFile = () => require("./.config.json");
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.4",
+    version: "0.8.6",
     settings: {
       optimizer: {
         enabled: true,
@@ -31,8 +29,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        blockNumber: 12421195,
-        url: "https://eth-mainnet.alchemyapi.io/v2/" + configFile().alchemyKey,
+        blockNumber: process.env.BLOCK_NUMBER ? parseInt(process.env.BLOCK_NUMBER!) : undefined,
+        url: configFile().ETH_URL,
       },
       blockGasLimit: 12e6,
       accounts: {
@@ -41,7 +39,7 @@ const config: HardhatUserConfig = {
     },
     eth: {
       chainId: 1,
-      url: "https://eth-mainnet.alchemyapi.io/v2/" + configFile().alchemyKey,
+      url: configFile().ETH_URL,
     },
   },
   typechain: {
