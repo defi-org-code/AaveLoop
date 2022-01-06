@@ -15,7 +15,7 @@
     "typechain": "typechain --target=web3-v1 --outDir=typechain-abi 'abi/**/*.json' && npx hardhat typechain",
     "prebuild": "rm -rf artifacts typechain-hardhat typechain-abi && npm run prettier && npm run typechain",
     "build": "npx hardhat compile && npx solhint 'contracts/**/*.sol'",
-    "test": "npx hardhat test # --logs",
+    "test": "npx hardhat test --logs",
     "deploy": "npx hardhat deploy --network $1"
   },
   "prettier": {

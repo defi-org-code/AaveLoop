@@ -5,7 +5,8 @@ import "hardhat-tracer";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
-import { askAddress, bn18, deploy } from "@defi.org/web3-candies";
+import { bn18, networks } from "@defi.org/web3-candies";
+import { askAddress, deploy } from "@defi.org/web3-candies/dist/hardhat/deploy";
 
 task("deploy").setAction(async () => {
   const owner = await askAddress("owner address 0x");
@@ -15,7 +16,7 @@ task("deploy").setAction(async () => {
 
 const configFile = () => require("./.config.json");
 
-const config: HardhatUserConfig = {
+export default {
   solidity: {
     version: "0.8.6",
     settings: {
@@ -30,7 +31,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         blockNumber: process.env.BLOCK_NUMBER ? parseInt(process.env.BLOCK_NUMBER!) : undefined,
-        url: configFile().ETH_URL,
+        url: configFile()[`NODE_URL_${process.env.NETWORK?.toUpperCase() || "ETH"}`] as string,
       },
       blockGasLimit: 12e6,
       accounts: {
@@ -38,8 +39,16 @@ const config: HardhatUserConfig = {
       },
     },
     eth: {
-      chainId: 1,
-      url: configFile().ETH_URL,
+      chainId: networks.eth.id,
+      url: configFile().NODE_URL_ETH,
+    },
+    poly: {
+      chainId: networks.poly.id,
+      url: configFile().NODE_URL_POLY,
+    },
+    avax: {
+      chainId: networks.avax.id,
+      url: configFile().NODE_URL_AVAX,
     },
   },
   typechain: {
@@ -59,5 +68,4 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: configFile().etherscanKey,
   },
-};
-export default config;
+} as HardhatUserConfig;

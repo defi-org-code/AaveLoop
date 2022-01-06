@@ -1,83 +1,49 @@
-import BN from "bn.js";
-import { bn, bn6, bn8 } from "../src/utils";
-import { contract, deployContract } from "../src/extensions";
-import { impersonate, resetNetworkFork, tag } from "../src/network";
-import { Wallet } from "../src/wallet";
+import { account, networks, Token } from "@defi.org/web3-candies";
+import { deployArtifact, impersonate, tag } from "@defi.org/web3-candies/dist/hardhat";
+import type { AaveLoop } from "../typechain-hardhat/AaveLoop";
+import { erc20s } from "./consts";
 import { expect } from "chai";
-import { AaveLoop } from "../typechain-hardhat/AaveLoop";
-import { USDC } from "../src/token";
-import { ILendingPool } from "../typechain-hardhat/ILendingPool";
-
-export const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8";
 
 export let deployer: string;
 export let owner: string;
 export let aaveloop: AaveLoop;
-export const POSITION = bn6("5,000,000");
 
-export async function initForkOwnerAndUSDC(blockNumber?: number) {
-  while (true) {
-    try {
-      return await doInitState(blockNumber);
-    } catch (e) {
-      console.error(e, "\ntrying again...");
-    }
-  }
-}
+const networkShortName = (process.env.NETWORK || "eth").toLowerCase() as "eth" | "poly" | "avax";
+export const network = (networks as any)[networkShortName];
 
-async function doInitState(blockNumber?: number) {
-  await resetNetworkFork(blockNumber);
-  await impersonate(usdcWhale);
-  tag(usdcWhale, "USDC whale");
+export let asset: Token;
 
-  await initWallet();
-
-  owner = (await Wallet.fake(1)).address;
-  aaveloop = await deployContract<AaveLoop>("AaveLoop", { from: deployer }, [owner]);
-
-  await ensureBalanceUSDC(owner, POSITION);
-}
-
-async function initWallet() {
-  const wallet = await Wallet.fake();
-  wallet.setAsDefaultSigner();
-  deployer = wallet.address;
+export async function initFixture() {
+  deployer = await account(0);
+  owner = await account(1);
   tag(deployer, "deployer");
+  tag(owner, "owner");
+
+  await initAssets();
+
+  aaveloop = await deployArtifact("AaveLoop", { from: deployer }, [owner], 0);
 }
 
-/**
- * Takes USDC from whale ensuring minimum amount
- */
-export async function ensureBalanceUSDC(address: string, amount: BN) {
-  if (bn(await USDC().methods.balanceOf(address).call()).lt(amount)) {
-    await USDC().methods.transfer(address, amount).send({ from: usdcWhale });
-  }
-}
-
-export async function expectRevert(fn: () => any) {
-  let err: Error | null = null;
-  try {
-    await fn();
-  } catch (e) {
-    err = e;
-  }
-  expect(!!err, "expected to revert").true;
+async function initAssets() {
+  asset = erc20s[networkShortName].USDC();
+  const whale = (asset as any).whale;
+  await impersonate(whale);
+  await asset.methods.transfer(owner, await asset.amount(10_000_000)).send({ from: whale });
 }
 
 export async function expectOutOfPosition() {
-  expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.gt(POSITION);
   expect(await aaveloop.methods.getBalanceAUSDC().call()).bignumber.zero;
   expect(await aaveloop.methods.getBalanceDebtToken().call()).bignumber.zero;
   expect((await aaveloop.methods.getPositionData().call()).ltv).bignumber.zero;
 }
 
-export async function getProtocolInterestRates() {
-  const lendingPool = contract<ILendingPool>(
-    require("../artifacts/contracts/IAaveInterfaces.sol/ILendingPool.json").abi,
-    "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9"
-  );
-  const reserveData = await lendingPool.methods.getReserveData(USDC().options.address).call();
-  const supplyRate = bn(reserveData[3]).div(bn8("0.1")); // ray to ether
-  const borrowRate = bn(reserveData[4]).div(bn8("0.1")); // ray to ether
-  return { supplyRate, borrowRate };
-}
+// export async function getProtocolInterestRates() {
+//   const lendingPool = contract<ILendingPool>(
+//     require("../artifacts/contracts/IAaveInterfaces.sol/ILendingPool.json").abi,
+//     "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9"
+//   );
+//   const reserveData = await lendingPool.methods.getReserveData(USDC().options.address).call();
+//   const supplyRate = bn(reserveData[3]).div(bn8("0.1")); // ray to ether
+//   const borrowRate = bn(reserveData[4]).div(bn8("0.1")); // ray to ether
+//   return { supplyRate, borrowRate };
+// }
