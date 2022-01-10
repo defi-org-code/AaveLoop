@@ -27,6 +27,9 @@ export default {
     },
   },
   defaultNetwork: "hardhat",
+  paths: {
+    tests: `test-${process.env.NETWORK?.toLowerCase() || "eth"}`,
+  },
   networks: {
     hardhat: {
       forking: {
