@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // solhint-disable
-pragma solidity 0.8.4;
+pragma solidity 0.8.6;
 
 interface ILendingPool {
     /**
@@ -11,13 +11,7 @@ interface ILendingPool {
      * @param amount The amount deposited
      * @param referral The referral code used
      **/
-    event Deposit(
-        address indexed reserve,
-        address user,
-        address indexed onBehalfOf,
-        uint256 amount,
-        uint16 indexed referral
-    );
+    event Deposit(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint16 indexed referral);
 
     /**
      * @dev Emitted on withdraw()
@@ -39,15 +33,7 @@ interface ILendingPool {
      * @param borrowRate The numeric rate at which the user has borrowed
      * @param referral The referral code used
      **/
-    event Borrow(
-        address indexed reserve,
-        address user,
-        address indexed onBehalfOf,
-        uint256 amount,
-        uint256 borrowRateMode,
-        uint256 borrowRate,
-        uint16 indexed referral
-    );
+    event Borrow(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint256 borrowRateMode, uint256 borrowRate, uint16 indexed referral);
 
     /**
      * @dev Emitted on repay()
@@ -96,14 +82,7 @@ interface ILendingPool {
      * @param premium The fee flash borrowed
      * @param referralCode The referral code used
      **/
-    event FlashLoan(
-        address indexed target,
-        address indexed initiator,
-        address indexed asset,
-        uint256 amount,
-        uint256 premium,
-        uint16 referralCode
-    );
+    event FlashLoan(address indexed target, address indexed initiator, address indexed asset, uint256 amount, uint256 premium, uint16 referralCode);
 
     /**
      * @dev Emitted when the pause is triggered.
@@ -496,7 +475,11 @@ library DataTypes {
         uint256 data;
     }
 
-    enum InterestRateMode {NONE, STABLE, VARIABLE}
+    enum InterestRateMode {
+        NONE,
+        STABLE,
+        VARIABLE
+    }
 }
 
 interface IStakedAave {
@@ -590,4 +573,17 @@ interface IAaveIncentivesController {
      * @dev for backward compatibility with previous implementation of the Incentives controller
      */
     function REWARD_TOKEN() external view returns (address);
+}
+
+/**
+ * @title IPriceOracleGetter interface
+ * @notice Interface for the Aave price oracle.
+ **/
+interface IAavePriceOracle {
+    /**
+     * @dev returns the asset price in ETH
+     * @param asset the address of the asset
+     * @return the ETH price of the asset
+     **/
+    function getAssetPrice(address asset) external view returns (uint256);
 }

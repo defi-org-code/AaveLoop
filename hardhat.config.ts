@@ -33,7 +33,7 @@ export default {
         blockNumber: process.env.BLOCK_NUMBER ? parseInt(process.env.BLOCK_NUMBER!) : undefined,
         url: configFile()[`NODE_URL_${process.env.NETWORK?.toUpperCase() || "ETH"}`] as string,
       },
-      blockGasLimit: 12e6,
+      blockGasLimit: 10e6,
       accounts: {
         accountsBalance: bn18("1,000,000").toString(),
       },
@@ -57,7 +57,7 @@ export default {
   },
   mocha: {
     timeout: 240_000,
-    retries: 1,
+    retries: 0,
     bail: true,
   },
   gasReporter: {

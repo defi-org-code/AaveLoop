@@ -1,96 +1,81 @@
-// import { expect } from "chai";
-// import { aaveloop, expectOutOfPosition, initForkOwnerAndUSDC, owner, POSITION } from "./test-base";
-// import { bn6, max } from "../src/utils";
-// import { USDC } from "../src/token";
-// import { contract } from "../src/extensions";
-//
-// describe("AaveLoop Emergency Tests", () => {
-//   beforeEach(async () => {
-//     await initForkOwnerAndUSDC();
-//   });
-//
-//   it("owner able to call step by step", async () => {
-//     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-//
-//     await aaveloop.methods._deposit(100).send({ from: owner });
-//     await aaveloop.methods._borrow(50).send({ from: owner });
-//     await aaveloop.methods._repay(50).send({ from: owner });
-//     await aaveloop.methods._withdraw(100).send({ from: owner });
-//
-//     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.eq(POSITION);
-//   });
-//
-//   it("withdrawAllUSDCToOwner", async () => {
-//     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-//     await aaveloop.methods.withdrawAllUSDCToOwner().send({ from: owner });
-//     expect(await USDC().methods.balanceOf(owner).call()).bignumber.eq(POSITION);
-//   });
-//
-//   it("emergency function call", async () => {
-//     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-//
-//     const encoded = USDC().methods.transfer(owner, POSITION).encodeABI();
-//     await aaveloop.methods.emergencyFunctionCall(USDC().options.address, encoded).send({ from: owner });
-//
-//     expect(await USDC().methods.balanceOf(aaveloop.options.address).call()).bignumber.zero;
-//     expect(await USDC().methods.balanceOf(owner).call()).bignumber.eq(POSITION);
-//   });
-//
-//   it("emergency function delegate call", async () => {
-//     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-//
-//     const compoundLoopAddress = "0x8bd210Fff94C41640F1Fd3E6A6063d04e2f10eEb";
-//     const compoundLoopABI = [
-//       {
-//         inputs: [],
-//         name: "safeTransferUSDCToOwner",
-//         outputs: [],
-//         stateMutability: "nonpayable",
-//         type: "function",
-//       },
-//     ];
-//     const compoundLoop = contract(compoundLoopABI, compoundLoopAddress);
-//
-//     const encoded = await compoundLoop.methods["safeTransferUSDCToOwner"]().encodeABI();
-//     await aaveloop.methods.emergencyFunctionDelegateCall(compoundLoopAddress, encoded).send({ from: owner });
-//
-//     expect(await USDC().methods.balanceOf(aaveloop.options.address).call()).bignumber.zero;
-//     expect(await USDC().methods.balanceOf(owner).call()).bignumber.eq(POSITION);
-//   });
-//
-//   it("exit position one by one manually", async () => {
-//     await USDC().methods.transfer(aaveloop.options.address, POSITION).send({ from: owner });
-//
-//     await aaveloop.methods.enterPosition(5).send({ from: owner });
-//     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
-//
-//     await aaveloop.methods._withdraw(bn6("1,638,000")).send({ from: owner });
-//     await aaveloop.methods._repay(bn6("1,638,000")).send({ from: owner });
-//     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
-//
-//     await aaveloop.methods._withdraw(bn6("2,048,000")).send({ from: owner });
-//     await aaveloop.methods._repay(bn6("2,048,000")).send({ from: owner });
-//     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
-//
-//     await aaveloop.methods._withdraw(bn6("2,560,000")).send({ from: owner });
-//     await aaveloop.methods._repay(bn6("2,560,000")).send({ from: owner });
-//     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
-//
-//     await aaveloop.methods._withdraw(bn6("3,200,000")).send({ from: owner });
-//     await aaveloop.methods._repay(bn6("3,200,000")).send({ from: owner });
-//     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
-//
-//     await aaveloop.methods._withdraw(bn6("4,000,000")).send({ from: owner });
-//     await aaveloop.methods._repay(bn6("4,000,000")).send({ from: owner });
-//     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.zero;
-//
-//     await aaveloop.methods._withdraw(bn6("1,000")).send({ from: owner });
-//     await aaveloop.methods._repay(bn6("1,000")).send({ from: owner });
-//
-//     await aaveloop.methods._withdraw(max).send({ from: owner });
-//
-//     expect(await aaveloop.methods.getBalanceUSDC().call()).bignumber.greaterThan(POSITION);
-//
-//     await expectOutOfPosition();
-//   });
-// });
+import BN from "bn.js";
+import { expect } from "chai";
+import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fundOwner, incentives, initFixture, lendingPool, owner } from "./test-base";
+import { erc20s } from "./consts";
+import { bn, ether, maxUint256 } from "@defi.org/web3-candies";
+import { deployArtifact } from "@defi.org/web3-candies/dist/hardhat";
+import { AaveLoop } from "../typechain-hardhat/AaveLoop";
+
+describe("AaveLoop Emergency Tests", () => {
+  const PRINCIPAL = 1_000_000;
+  let initialBalance: BN;
+
+  beforeEach(async () => {
+    await initFixture();
+    await fundOwner(PRINCIPAL);
+    initialBalance = bn(await asset.methods.balanceOf(owner).call());
+  });
+
+  it("Owner able to call step by step", async () => {
+    await asset.methods.transfer(aaveloop.options.address, 100).send({ from: owner });
+    await aaveloop.methods._supply(100).send({ from: owner });
+    await aaveloop.methods._borrow(50).send({ from: owner });
+    await aaveloop.methods._repayBorrow(50).send({ from: owner });
+    await aaveloop.methods._redeemSupply(100).send({ from: owner });
+    await aaveloop.methods._withdrawToOwner(asset.address).send({ from: owner });
+    await expectOutOfPosition();
+  });
+
+  it("withdrawToOwner", async () => {
+    const weth = erc20s.eth.WETH();
+    await weth.methods.deposit().send({ from: owner, value: ether });
+    const balance = await weth.methods.balanceOf(owner).call();
+
+    await weth.methods.transfer(aaveloop.options.address, ether).send({ from: owner });
+    expect(await weth.methods.balanceOf(owner).call()).bignumber.zero;
+
+    await aaveloop.methods._withdrawToOwner(weth.address).send({ from: owner });
+
+    expect(await weth.methods.balanceOf(owner).call()).bignumber.eq(balance);
+  });
+
+  it("emergencyFunctionCall", async () => {
+    await asset.methods.transfer(aaveloop.options.address, await asset.amount(PRINCIPAL)).send({ from: owner });
+
+    const encoded = asset.methods.transfer(owner, await asset.amount(PRINCIPAL)).encodeABI();
+    await aaveloop.methods.emergencyFunctionCall(asset.options.address, encoded).send({ from: owner });
+
+    expect(await asset.methods.balanceOf(aaveloop.options.address).call()).bignumber.zero;
+    expect(await asset.methods.balanceOf(owner).call()).bignumber.eq(initialBalance);
+  });
+
+  it("emergencyFunctionDelegateCall", async () => {
+    await asset.methods.transfer(aaveloop.options.address, await asset.amount(PRINCIPAL)).send({ from: owner });
+
+    const deployed = await deployArtifact<AaveLoop>("AaveLoop", { from: deployer }, [owner, asset.address, lendingPool.options.address, incentives.options.address], 0);
+    const encoded = deployed.methods._withdrawToOwner(asset.address).encodeABI();
+    await aaveloop.methods.emergencyFunctionDelegateCall(deployed.options.address, encoded).send({ from: owner }); // run _withdrawToOwner in the context of original aaveloop
+
+    expect(await asset.methods.balanceOf(aaveloop.options.address).call()).bignumber.zero;
+    expect(await asset.methods.balanceOf(owner).call()).bignumber.eq(initialBalance);
+  });
+
+  it("Exit position one by one manually", async () => {
+    await asset.methods.approve(aaveloop.options.address, await asset.amount(PRINCIPAL)).send({ from: owner });
+
+    await aaveloop.methods.enterPosition(await asset.amount(PRINCIPAL), 1).send({ from: owner });
+    await expectInPosition(PRINCIPAL, 1.5); // at least x1.5
+
+    while (bn(await aaveloop.methods.getBorrowBalance().call()).gtn(0)) {
+      await aaveloop.methods._redeemSupply(await asset.amount(100_000)).send({ from: owner });
+      await aaveloop.methods._repayBorrow(await asset.amount(100_000)).send({ from: owner });
+    }
+    await aaveloop.methods._redeemSupply(maxUint256).send({ from: owner });
+    await aaveloop.methods._withdrawToOwner(asset.address).send({ from: owner });
+
+    expect(await asset.methods.balanceOf(owner).call())
+      .bignumber.gt(initialBalance)
+      .closeTo(initialBalance, await asset.amount(1));
+    await expectOutOfPosition();
+  });
+});

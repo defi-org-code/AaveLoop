@@ -15,5 +15,19 @@ export const erc20s = _.merge({}, erc20sOrig, {
 });
 
 export const contracts = _.merge({}, contractsOrig, {
-  //
+  eth: {
+    //
+  },
+  poly: {
+    //
+  },
+  avax: {
+    //
+  },
 });
+
+export const rewards = {
+  eth: () => erc20s.eth.Aave_stkAAVE(),
+  poly: () => erc20s.poly.WMATIC(),
+  avax: () => erc20s.avax.WAVAX(),
+};

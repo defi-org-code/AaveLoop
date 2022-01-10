@@ -8,14 +8,15 @@
   "author": "Orbs",
   "license": "MIT",
   "dependencies": {
-    "@defi.org/web3-candies": "2.x"
+    "@defi.org/web3-candies": "2.x",
+    "axios": "0.24.x"
   },
   "scripts": {
     "prettier": "prettier --write '{test,src,contracts}/**/*.{ts,js,json,sol}'",
-    "typechain": "typechain --target=web3-v1 --outDir=typechain-abi 'abi/**/*.json' && npx hardhat typechain",
+    "typechain": "npx hardhat typechain",
     "prebuild": "rm -rf artifacts typechain-hardhat typechain-abi && npm run prettier && npm run typechain",
     "build": "npx hardhat compile && npx solhint 'contracts/**/*.sol'",
-    "test": "npx hardhat test --logs",
+    "test": "DEBUG=web3-candies npx hardhat test --logs",
     "deploy": "npx hardhat deploy --network $1"
   },
   "prettier": {
