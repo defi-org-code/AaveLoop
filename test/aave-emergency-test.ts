@@ -1,7 +1,7 @@
 import BN from "bn.js";
 import { expect } from "chai";
-import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fundOwner, incentives, initFixture, lendingPool, owner } from "./test-base";
-import { erc20s } from "./consts";
+import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fundOwner, incentives, initFixture, lendingPool, networkShortName, owner } from "./test-base";
+import { weth } from "./consts";
 import { bn, ether, maxUint256 } from "@defi.org/web3-candies";
 import { deployArtifact } from "@defi.org/web3-candies/dist/hardhat";
 import { AaveLoop } from "../typechain-hardhat/AaveLoop";
@@ -27,16 +27,16 @@ describe("AaveLoop Emergency Tests", () => {
   });
 
   it("withdrawToOwner", async () => {
-    const weth = erc20s.eth.WETH();
-    await weth.methods.deposit().send({ from: owner, value: ether });
-    const balance = await weth.methods.balanceOf(owner).call();
+    const _weth = weth[networkShortName]();
+    await _weth.methods.deposit().send({ from: owner, value: ether });
+    const balance = await _weth.methods.balanceOf(owner).call();
 
-    await weth.methods.transfer(aaveloop.options.address, ether).send({ from: owner });
-    expect(await weth.methods.balanceOf(owner).call()).bignumber.zero;
+    await _weth.methods.transfer(aaveloop.options.address, ether).send({ from: owner });
+    expect(await _weth.methods.balanceOf(owner).call()).bignumber.zero;
 
-    await aaveloop.methods._withdrawToOwner(weth.address).send({ from: owner });
+    await aaveloop.methods._withdrawToOwner(_weth.address).send({ from: owner });
 
-    expect(await weth.methods.balanceOf(owner).call()).bignumber.eq(balance);
+    expect(await _weth.methods.balanceOf(owner).call()).bignumber.eq(balance);
   });
 
   it("emergencyFunctionCall", async () => {

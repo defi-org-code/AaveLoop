@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { erc20s, expectRevert, maxUint256, useChaiBN, zeroAddress } from "@defi.org/web3-candies";
+import { erc20s, expectRevert, maxUint256, useChaiBN, web3, zeroAddress } from "@defi.org/web3-candies";
 import { aaveloop, asset, deployer, initFixture, owner } from "./test-base";
 import { deployArtifact } from "@defi.org/web3-candies/dist/hardhat";
 

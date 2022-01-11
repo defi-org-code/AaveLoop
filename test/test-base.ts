@@ -18,7 +18,7 @@ export let incentives: IAaveIncentivesController;
 export let asset: Token;
 export let reward: Token;
 
-const networkShortName = (process.env.NETWORK || "eth").toLowerCase() as "eth" | "poly" | "avax";
+export const networkShortName = (process.env.NETWORK || "eth").toLowerCase() as "eth" | "poly" | "avax";
 export const network = (networks as any)[networkShortName] as Network;
 
 export async function initFixture() {

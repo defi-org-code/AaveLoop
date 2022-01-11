@@ -31,3 +31,9 @@ export const rewards = {
   poly: () => erc20s.poly.WMATIC(),
   avax: () => erc20s.avax.WAVAX(),
 };
+
+export const weth = {
+  eth: () => erc20s.eth.WETH(),
+  poly: () => erc20s.poly.WMATIC(),
+  avax: () => erc20s.avax.WAVAX(),
+};

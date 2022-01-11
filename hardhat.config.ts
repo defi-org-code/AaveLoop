@@ -27,9 +27,6 @@ export default {
     },
   },
   defaultNetwork: "hardhat",
-  paths: {
-    tests: `test-${process.env.NETWORK?.toLowerCase() || "eth"}`,
-  },
   networks: {
     hardhat: {
       forking: {
@@ -66,6 +63,8 @@ export default {
   gasReporter: {
     currency: "USD",
     coinmarketcap: configFile().coinmarketcapKey,
+    token: process.env.NETWORK?.toLowerCase() == "avax" ? "AVAX" : undefined,
+    gasPriceApi: process.env.NETWORK?.toLowerCase() == "avax" ? "https://api.snowtrace.io/api?module=proxy&action=eth_gasPrice" : undefined,
     showTimeSpent: true,
   },
   etherscan: {
