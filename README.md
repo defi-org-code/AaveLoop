@@ -12,7 +12,7 @@ All values are immutable, contract is only accesible to owner, with the exceptio
 Supported networks:
 
 - Ethereum
-- [WIP] Avalanche
+- Avalanche
 - [WIP] Polygon
 
 > Use at your own risk
@@ -25,6 +25,7 @@ Run test on a mainnet fork with Hardhat:
 npm install
 npm run build
 npm run test
+npm run test:avax
 ```
 
 ## Contract deployment
