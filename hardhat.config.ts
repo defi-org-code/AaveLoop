@@ -63,8 +63,13 @@ export default {
   gasReporter: {
     currency: "USD",
     coinmarketcap: configFile().coinmarketcapKey,
-    token: process.env.NETWORK?.toLowerCase() == "avax" ? "AVAX" : undefined,
-    gasPriceApi: process.env.NETWORK?.toLowerCase() == "avax" ? "https://api.snowtrace.io/api?module=proxy&action=eth_gasPrice" : undefined,
+    token: process.env.NETWORK?.toLowerCase() == "avax" ? "AVAX" : process.env.NETWORK?.toLowerCase() == "poly" ? "MATIC" : undefined,
+    gasPriceApi:
+      process.env.NETWORK?.toLowerCase() == "avax"
+        ? "https://api.snowtrace.io/api?module=proxy&action=eth_gasPrice"
+        : process.env.NETWORK?.toLowerCase() == "poly"
+        ? "https://api.polygonscan.com/api?module=proxy&action=eth_gasPrice"
+        : undefined,
     showTimeSpent: true,
   },
   etherscan: {
