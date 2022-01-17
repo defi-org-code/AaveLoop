@@ -2,8 +2,8 @@ import _ from "lodash";
 import axios from "axios";
 import { expect } from "chai";
 import { contracts, erc20s, rewards } from "./consts";
-import { account, Network, networks, Token, useChaiBN, zero } from "@defi.org/web3-candies";
-import { deployArtifact, impersonate, tag } from "@defi.org/web3-candies/dist/hardhat";
+import { account, bn, ether, maxUint256, Network, networks, Token, useChaiBN, web3, zero } from "@defi.org/web3-candies";
+import { deployArtifact, hre, impersonate, tag } from "@defi.org/web3-candies/dist/hardhat";
 import type { AaveLoop } from "../typechain-hardhat/AaveLoop";
 import type { ILendingPool } from "../typechain-hardhat/ILendingPool";
 import type { IAaveIncentivesController } from "../typechain-hardhat/IAaveIncentivesController";
@@ -37,15 +37,16 @@ export async function initFixture() {
 export async function fundOwner(amount: number) {
   const whale = (asset as any).whale;
   await impersonate(whale);
+  await hre().network.provider.send("hardhat_setBalance", [whale, web3().utils.numberToHex(maxUint256)]);
   await asset.methods.transfer(owner, await asset.amount(amount)).send({ from: whale });
 }
 
 export async function expectInPosition(principal: number, leverage: number) {
   expect(await aaveloop.methods.getSupplyBalance().call())
     .bignumber.gt(zero)
-    .gte(await asset.amount(principal * leverage));
+    .gte(await asset.amount(bn(principal * leverage)));
   if (leverage > 1) {
-    expect(await aaveloop.methods.getBorrowBalance().call()).bignumber.gte(await asset.amount(principal * leverage - principal));
+    expect(await aaveloop.methods.getBorrowBalance().call()).bignumber.gte(await asset.amount(bn(principal * leverage - principal)));
   } else {
     expect(await aaveloop.methods.getBorrowBalance().call()).bignumber.zero;
   }

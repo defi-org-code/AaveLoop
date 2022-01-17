@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fundOwner, getPrice, initFixture, networkShortName, owner, reward } from "./test-base";
-import { bn, bn18, ether, expectRevert, fmt18, fmt6, maxUint256, useChaiBN, zero } from "@defi.org/web3-candies";
+import { bn, ether, expectRevert, fmt18, maxUint256, useChaiBN, zero } from "@defi.org/web3-candies";
 import { mineBlock, mineBlocks, resetNetworkFork } from "@defi.org/web3-candies/dist/hardhat";
 
 useChaiBN();
 
 const testConfig = {
-  eth: { LTV: 8250, iterations: 15, expectedLeverage: 4.7 },
+  eth: { LTV: 8250, iterations: 15, expectedLeverage: 4.8 },
   avax: { LTV: 7500, iterations: 10, expectedLeverage: 3.7 },
   poly: { LTV: 0, iterations: 0, expectedLeverage: 0 },
 };
@@ -39,7 +39,7 @@ describe("AaveLoop E2E Tests", () => {
 
     expect(await aaveloop.methods.getLiquidity().call())
       .bignumber.gt(zero)
-      .lt(await asset.amount(PRINCIPAL * 0.01)); // < 1% liquidity
+      .lt(await asset.amount(PRINCIPAL * 0.02)); // < 2% liquidity
 
     const tx = await aaveloop.methods.exitPosition(50).send({ from: owner });
     expect(tx.gasUsed).lt(10_000_000);
@@ -100,6 +100,15 @@ describe("AaveLoop E2E Tests", () => {
     const APY = Math.pow(1 + parseFloat(fmt18(APR.divn(365))), 365) - 1;
     console.log("result APY: ", APY * 100, "%");
     console.log("=================");
+  });
+
+  it("Add to existing position", async () => {
+    await aaveloop.methods.enterPosition(await asset.amount(PRINCIPAL), PER_NETWORK.iterations).send({ from: owner });
+    await expectInPosition(PRINCIPAL, PER_NETWORK.expectedLeverage);
+
+    await fundOwner(PRINCIPAL);
+    await aaveloop.methods.enterPosition(await asset.amount(PRINCIPAL), PER_NETWORK.iterations).send({ from: owner });
+    await expectInPosition(PRINCIPAL * 2, PER_NETWORK.expectedLeverage);
   });
 
   it("partial exit, lower leverage", async () => {

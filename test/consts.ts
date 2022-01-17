@@ -10,7 +10,7 @@ export const erc20s = _.merge({}, erc20sOrig, {
   },
   avax: {
     USDC: () => erc20s.avax.USDCe(),
-    USDCe: () => _.merge(erc20sOrig.avax.USDCe(), { whale: "0xCe2CC46682E9C6D5f174aF598fb4931a9c0bE68e" }),
+    USDCe: () => _.merge(erc20sOrig.avax.USDCe(), { whale: "0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1" }),
   },
 });
 
