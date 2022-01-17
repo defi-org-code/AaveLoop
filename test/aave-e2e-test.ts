@@ -6,9 +6,9 @@ import { mineBlock, mineBlocks, resetNetworkFork } from "@defi.org/web3-candies/
 useChaiBN();
 
 const testConfig = {
-  eth: { LTV: 8250, iterations: 15, expectedLeverage: 4.8 },
+  eth: { LTV: 8250, iterations: 15, expectedLeverage: 5.3 },
   avax: { LTV: 7500, iterations: 10, expectedLeverage: 3.7 },
-  poly: { LTV: 0, iterations: 0, expectedLeverage: 0 },
+  poly: { LTV: 8000, iterations: 13, expectedLeverage: 4.6 },
 };
 
 const DAYS_TO_SAFE_GAS = 365;

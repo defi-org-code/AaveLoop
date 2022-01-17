@@ -13,7 +13,7 @@ Supported networks:
 
 - Ethereum
 - Avalanche
-- [WIP] Polygon
+- Polygon
 
 > Use at your own risk
 

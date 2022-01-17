@@ -6,7 +6,7 @@ export const erc20s = _.merge({}, erc20sOrig, {
     USDC: () => _.merge(erc20sOrig.eth.USDC(), { whale: "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8" }),
   },
   poly: {
-    USDC: () => _.merge(erc20sOrig.poly.USDC(), { whale: "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245" }),
+    USDC: () => _.merge(erc20sOrig.poly.USDC(), { whale: "0xBA12222222228d8Ba445958a75a0704d566BF2C8" }),
   },
   avax: {
     USDC: () => erc20s.avax.USDCe(),
