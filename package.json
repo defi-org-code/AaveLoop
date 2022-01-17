@@ -19,7 +19,7 @@
     "test": "DEBUG=web3-candies npx hardhat test --logs",
     "test:avax": "DEBUG=web3-candies NETWORK=avax npx hardhat test --logs",
     "test:poly": "DEBUG=web3-candies NETWORK=poly npx hardhat test --logs",
-    "deploy": "npx hardhat deploy --network $1"
+    "deploy": "DEBUG=web3-candies npx hardhat deploy --network $1"
   },
   "prettier": {
     "printWidth": 180

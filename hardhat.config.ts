@@ -6,12 +6,12 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import { bn18, networks } from "@defi.org/web3-candies";
-import { askAddress, deploy } from "@defi.org/web3-candies/dist/hardhat/deploy";
 
 task("deploy").setAction(async () => {
-  const owner = await askAddress("owner address 0x");
-  const gasLimit = 2_000_000;
-  await deploy("AaveLoop", [owner], gasLimit, 0, true, 0);
+  // initNetworkContracts();
+  // const owner = await askAddress("owner address 0x");
+  // const gasLimit = 2_000_000;
+  // console.log(await deploy("AaveLoop", [owner, asset.address, lendingPool.options.address, incentives.options.address], gasLimit, 0, true, 1));
 });
 
 const configFile = () => require("./.config.json");
@@ -73,6 +73,6 @@ export default {
     showTimeSpent: true,
   },
   etherscan: {
-    apiKey: configFile().etherscanKey,
+    apiKey: configFile()[`ETHERSCAN_${process.env.NETWORK?.toUpperCase() || "ETH"}`],
   },
 } as HardhatUserConfig;
