@@ -16,6 +16,9 @@ import "./ImmutableOwnable.sol";
 contract AaveLoop is ImmutableOwnable {
     using SafeERC20 for ERC20;
 
+    uint256 public constant USE_VARIABLE_DEBT = 2;
+    uint256 public constant SAFE_BUFFER = 100; // wei
+
     ERC20 public immutable ASSET; // solhint-disable-line
     ILendingPool public immutable LENDING_POOL; // solhint-disable-line
     IAaveIncentivesController public immutable INCENTIVES; // solhint-disable-line
@@ -153,7 +156,7 @@ contract AaveLoop is ImmutableOwnable {
         }
 
         for (uint256 i = 0; i < iterations; i++) {
-            _borrow(getLiquidity());
+            _borrow(getLiquidity() - SAFE_BUFFER);
             _supply(getAssetBalance());
         }
 
@@ -168,7 +171,7 @@ contract AaveLoop is ImmutableOwnable {
         (, , , , uint256 ltv, ) = getPositionData(); // 4 decimals
 
         for (uint256 i = 0; i < iterations && getBorrowBalance() > 0; i++) {
-            _redeemSupply((getLiquidity() * 1e4) / ltv);
+            _redeemSupply(((getLiquidity() * 1e4) / ltv) - SAFE_BUFFER);
             _repayBorrow(getAssetBalance());
         }
 
@@ -193,7 +196,7 @@ contract AaveLoop is ImmutableOwnable {
      * amount in ASSET
      */
     function _borrow(uint256 amount) public onlyOwner {
-        LENDING_POOL.borrow(address(ASSET), amount, 2, 0, address(this));
+        LENDING_POOL.borrow(address(ASSET), amount, USE_VARIABLE_DEBT, 0, address(this));
     }
 
     /**
@@ -208,7 +211,7 @@ contract AaveLoop is ImmutableOwnable {
      */
     function _repayBorrow(uint256 amount) public onlyOwner {
         ASSET.safeIncreaseAllowance(address(LENDING_POOL), amount);
-        LENDING_POOL.repay(address(ASSET), amount, 2, address(this));
+        LENDING_POOL.repay(address(ASSET), amount, USE_VARIABLE_DEBT, address(this));
     }
 
     function _withdrawToOwner(address asset) public onlyOwner returns (uint256) {

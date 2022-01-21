@@ -7,6 +7,8 @@ export const erc20s = _.merge({}, erc20sOrig, {
   },
   poly: {
     USDC: () => _.merge(erc20sOrig.poly.USDC(), { whale: "0xBA12222222228d8Ba445958a75a0704d566BF2C8" }),
+    WETH: () => _.merge(erc20sOrig.poly.WETH(), { whale: "0xBA12222222228d8Ba445958a75a0704d566BF2C8" }),
+    DAI: () => _.merge(erc20sOrig.poly.DAI(), { whale: "0xBA12222222228d8Ba445958a75a0704d566BF2C8" }),
   },
   avax: {
     USDC: () => erc20s.avax.USDCe(),

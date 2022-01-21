@@ -14,7 +14,7 @@ import {
   PRINCIPAL,
   reward,
 } from "./test-base";
-import { bn, ether, expectRevert, fmt18, maxUint256, useChaiBN, zero } from "@defi.org/web3-candies";
+import { bn, bn18, ether, expectRevert, fmt18, maxUint256, useChaiBN, zero } from "@defi.org/web3-candies";
 import { mineBlock, mineBlocks, resetNetworkFork } from "@defi.org/web3-candies/dist/hardhat";
 
 useChaiBN();
@@ -72,6 +72,7 @@ describe("AaveLoop E2E Tests", () => {
 
     const pending = await aaveloop.methods.getPendingRewards().call();
     expect(pending).bignumber.gt(zero);
+    expect(await reward.methods.balanceOf(owner).call()).bignumber.zero;
 
     await aaveloop.methods.claimRewardsToOwner().send({ from: deployer });
 
@@ -94,7 +95,8 @@ describe("AaveLoop E2E Tests", () => {
     const profit = profitFromInterest.add(profitFromRewards);
     console.log("total profit", fmt18(profit));
 
-    const dailyRate = profit.mul(ether).div(await asset.mantissa(await asset.amount(PRINCIPAL)));
+    const principalUsd = PRINCIPAL * (await getPrice(asset));
+    const dailyRate = profit.mul(ether).div(bn18(principalUsd));
     console.log("dailyRate:", fmt18(dailyRate.muln(100)), "%");
 
     const APR = dailyRate.muln(365);
