@@ -26,12 +26,14 @@ npm install
 npm run build
 npm run test
 npm run test:avax
+npm run test:poly
 ```
 
 ## Contract deployment
 
 1. Clone and initialize the repo:
    - `git clone`
+   - create a .config.json file in root with keys as shown below
    - `npm install`
    - `npm run build`
 1. Enter your infura/alchemy endpoint in `hardhat.config.ts` under `networks.eth.url`
@@ -42,6 +44,20 @@ npm run test:avax
 1. A backup is created under `./deployments` just in case
 1. The contract is ready to be used by the owner
 1. To add custom abi to etherscan, use the ABI in `deployments/*/artifacts/contracts/AaveLoop.sol/AaveLoop.json`
+
+### expected .config.json
+```json
+{
+  "NODE_URL_ETH": "",
+  "NODE_URL_POLY": "",
+  "NODE_URL_AVAX": "",
+  "coinmarketcapKey": "",
+  "ETHERSCAN_ETH": "",
+  "ETHERSCAN_POLY": "",
+  "ETHERSCAN_AVAX": ""
+}
+```
+
 
 ## Management roles
 
