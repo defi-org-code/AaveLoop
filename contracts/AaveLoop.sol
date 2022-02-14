@@ -17,7 +17,7 @@ contract AaveLoop is ImmutableOwnable {
     using SafeERC20 for ERC20;
 
     uint256 public constant USE_VARIABLE_DEBT = 2;
-    uint256 public constant SAFE_BUFFER = 100; // wei
+    uint256 public constant SAFE_BUFFER = 10; // wei
 
     ERC20 public immutable ASSET; // solhint-disable-line
     ILendingPool public immutable LENDING_POOL; // solhint-disable-line
