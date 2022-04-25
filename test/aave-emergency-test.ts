@@ -1,10 +1,10 @@
 import BN from "bn.js";
 import { expect } from "chai";
-import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fundOwner, incentives, initFixture, lendingPool, networkShortName, owner } from "./test-base";
+import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fundOwner, incentives, initFixture, aavePool, networkShortName, owner } from "./test-base";
 import { weth } from "./consts";
 import { bn, ether, maxUint256 } from "@defi.org/web3-candies";
 import { deployArtifact } from "@defi.org/web3-candies/dist/hardhat";
-import { AaveLoop } from "../typechain-hardhat/AaveLoop";
+import { AaveLoopV3 } from "../typechain-hardhat/AaveLoopV3";
 
 describe("AaveLoop Emergency Tests", () => {
   const PRINCIPAL = 1_000_000;
@@ -52,7 +52,7 @@ describe("AaveLoop Emergency Tests", () => {
   it("emergencyFunctionDelegateCall", async () => {
     await asset.methods.transfer(aaveloop.options.address, await asset.amount(PRINCIPAL)).send({ from: owner });
 
-    const deployed = await deployArtifact<AaveLoop>("AaveLoop", { from: deployer }, [owner, asset.address, lendingPool.options.address, incentives.options.address], 0);
+    const deployed = await deployArtifact<AaveLoopV3>("AaveLoopV3", { from: deployer }, [owner, asset.address, aavePool.options.address, incentives.options.address], 0);
     const encoded = deployed.methods._withdrawToOwner(asset.address).encodeABI();
     await aaveloop.methods.emergencyFunctionDelegateCall(deployed.options.address, encoded).send({ from: owner }); // run _withdrawToOwner in the context of original aaveloop
 
@@ -63,7 +63,7 @@ describe("AaveLoop Emergency Tests", () => {
   it("Exit position one by one manually", async () => {
     await asset.methods.approve(aaveloop.options.address, await asset.amount(PRINCIPAL)).send({ from: owner });
 
-    await aaveloop.methods.enterPosition(await asset.amount(PRINCIPAL), 1).send({ from: owner });
+    await aaveloop.methods.enter(await asset.amount(PRINCIPAL), 1500).send({ from: owner });
     await expectInPosition(PRINCIPAL, 1.5); // at least x1.5
 
     while (bn(await aaveloop.methods.getBorrowBalance().call()).gtn(0)) {

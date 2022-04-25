@@ -1,5 +1,7 @@
 import _ from "lodash";
-import { erc20s as erc20sOrig, contracts as contractsOrig } from "@defi.org/web3-candies/dist/erc20";
+import { erc20s as erc20sOrig } from "@defi.org/web3-candies/dist/erc20";
+import { contract } from "@defi.org/web3-candies";
+import { artifact } from "@defi.org/web3-candies/dist/hardhat";
 
 export const erc20s = _.merge({}, erc20sOrig, {
   eth: {
@@ -11,22 +13,25 @@ export const erc20s = _.merge({}, erc20sOrig, {
     DAI: () => _.merge(erc20sOrig.poly.DAI(), { whale: "0xBA12222222228d8Ba445958a75a0704d566BF2C8" }),
   },
   avax: {
-    USDC: () => erc20s.avax.USDCe(),
+    USDC: () => _.merge(erc20sOrig.avax.USDC(), { whale: "0x1da20Ac34187b2d9c74F729B85acB225D3341b25" }),
     USDCe: () => _.merge(erc20sOrig.avax.USDCe(), { whale: "0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1" }),
   },
 });
 
-export const contracts = _.merge({}, contractsOrig, {
+export const contracts = {
   eth: {
-    //
+    // Aave_LendingPool: () => contract<AaveLendingPoolAbi>(require("../abi/AaveLendingPoolAbi.json"), "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9"),
+    // Aave_Incentives: () => contract<AaveIncentivesAbi>(require("../abi/AaveIncentivesAbi.json"), "0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5"),
   },
   poly: {
-    //
+    // Aave_LendingPool: () => contract<AaveLendingPoolAbi>(require("../abi/AaveLendingPoolAbi.json"), "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf"),
+    // Aave_Incentives: () => contract<AaveIncentivesAbi>(require("../abi/AaveIncentivesAbi.json"), "0x357D51124f59836DeD84c8a1730D72B749d8BC23"),
   },
   avax: {
-    //
+    AavePool: () => contract(artifact("IPool").abi, "0x794a61358D6845594F94dc1DB02A252b5b4814aD"),
+    AaveIncentives: () => contract(artifact("IAaveIncentivesController").abi, "0x929EC64c34a17401F460460D4B9390518E5B473e"),
   },
-});
+};
 
 export const rewards = {
   eth: () => erc20s.eth.Aave_stkAAVE(),

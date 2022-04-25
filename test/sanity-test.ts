@@ -23,10 +23,10 @@ describe("AaveLoop Sanity Tests", () => {
   });
 
   it("constructor args", async () => {
-    await expectRevert(() => deployArtifact("AaveLoop", { from: deployer }, [zeroAddress, zeroAddress, zeroAddress, zeroAddress], 0), "owner 0");
-    await expectRevert(() => deployArtifact("AaveLoop", { from: deployer }, [deployer, zeroAddress, zeroAddress, zeroAddress], 0), "address 0");
-    await expectRevert(() => deployArtifact("AaveLoop", { from: deployer }, [deployer, deployer, zeroAddress, zeroAddress], 0), "address 0");
-    await expectRevert(() => deployArtifact("AaveLoop", { from: deployer }, [deployer, deployer, deployer, zeroAddress], 0), "address 0");
+    await expectRevert(() => deployArtifact("AaveLoopV3", { from: deployer }, [zeroAddress, zeroAddress, zeroAddress, zeroAddress], 0), "A0");
+    await expectRevert(() => deployArtifact("AaveLoopV3", { from: deployer }, [deployer, zeroAddress, zeroAddress, zeroAddress], 0), "A0");
+    await expectRevert(() => deployArtifact("AaveLoopV3", { from: deployer }, [deployer, deployer, zeroAddress, zeroAddress], 0), "A0");
+    await expectRevert(() => deployArtifact("AaveLoopV3", { from: deployer }, [deployer, deployer, deployer, zeroAddress], 0), "A0");
   });
 
   it("access control", async () => {
@@ -35,8 +35,8 @@ describe("AaveLoop Sanity Tests", () => {
     await expectRevert(() => aaveloop.methods._repayBorrow(50).send({ from: deployer }), "onlyOwner");
     await expectRevert(() => aaveloop.methods._redeemSupply(100).send({ from: deployer }), "onlyOwner");
 
-    await expectRevert(() => aaveloop.methods.enterPosition(100, 1).send({ from: deployer }), "onlyOwner");
-    await expectRevert(() => aaveloop.methods.exitPosition(1).send({ from: deployer }), "onlyOwner");
+    await expectRevert(() => aaveloop.methods.enter(100, 150).send({ from: deployer }), "onlyOwner");
+    await expectRevert(() => aaveloop.methods.exit().send({ from: deployer }), "onlyOwner");
 
     await expectRevert(() => aaveloop.methods._withdrawToOwner(asset.address).send({ from: deployer }), "onlyOwner");
     await expectRevert(() => aaveloop.methods.emergencyFunctionCall(deployer, zeroAddress).send({ from: deployer }), "onlyOwner");
