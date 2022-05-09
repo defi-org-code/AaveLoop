@@ -1,116 +1,68 @@
 import { expect } from "chai";
-import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fundOwner, getPrice, initFixture, owner, reward } from "./test-base";
-import { bn, bn18, ether, expectRevert, fmt18, fmt6, maxUint256, useChaiBN, zero } from "@defi.org/web3-candies";
-import { mineBlock, mineBlocks, resetNetworkFork } from "@defi.org/web3-candies/dist/hardhat";
+import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fund, getPrice, initFixture, owner, reward } from "./test-base";
+import { bn, bn18, ether, fmt18, useChaiBN, zero } from "@defi.org/web3-candies";
+import { mineBlock } from "@defi.org/web3-candies/dist/hardhat";
 
 useChaiBN();
 
 describe("AaveLoop E2E Tests", () => {
-  // const CONFIG = {
-  //   eth: { LTV: 8250, iterations: 15, expectedLeverage: 5.3 },
-  //   avax: { LTV: 7500, iterations: 10, expectedLeverage: 3.7 },
-  //   poly: { LTV: 8000, iterations: 13, expectedLeverage: 4.6 },
-  // };
-
   const ASSUME_LTV = 9700;
-  const ITERATIONS = 10;
   const DAYS_TO_SAFE_GAS = 180;
-  const PRINCIPAL = 1_000_000;
+  const PRINCIPAL = 5_000_000;
+  const MAX_SAGE_GAS = 10_000_000;
+
+  const LEVERAGE = 29;
+  const BORROW_PERCENT = (LEVERAGE - 1) * 100; // 2800%
 
   beforeEach(async () => {
-    await resetNetworkFork();
     await initFixture();
-    // expect(await aaveloop.methods.getLTV().call()).bignumber.eq(bn(ASSUME_LTV), `assuming ${ASSUME_LTV / 10000} LTV`);
+    expect(await aaveloop.methods.getLTV4().call()).bignumber.eq(bn(ASSUME_LTV));
 
-    await fundOwner(PRINCIPAL);
+    await fund(owner, PRINCIPAL);
 
-    const initialAssetBalance = bn(await asset.methods.balanceOf(owner).call());
-    expect(initialAssetBalance).bignumber.eq(await asset.amount(PRINCIPAL), `assuming ${PRINCIPAL} principal`);
-    await asset.methods.approve(aaveloop.options.address, maxUint256).send({ from: owner });
+    await asset.methods.approve(aaveloop.options.address, await asset.amount(PRINCIPAL)).send({ from: owner });
   });
 
-  it.only(`Full E2E ${DAYS_TO_SAFE_GAS} days exit safely under current market conditions`, async () => {
-    await aaveloop.methods.enterAll().send({ from: owner });
-    // ITERATIONS will result in free liquidity of 5% (+-1%) of PRINCIPAL
-    // expect(await aaveloop.methods.getLiquidity().call()).bignumber.closeTo(await asset.amount(PRINCIPAL * 0.05), await asset.amount(PRINCIPAL * 0.01));
-    // await expectInPosition(PRINCIPAL, 4);
-
-    console.log("✨", fmt6(await aaveloop.methods.getLiquidity().call()), fmt6(await aaveloop.methods.getSupplyBalance().call()));
+  it.only(`Show me the money: ${DAYS_TO_SAFE_GAS} day safe exit $${PRINCIPAL} x${LEVERAGE}`, async () => {
+    await aaveloop.methods.enter(await asset.amount(PRINCIPAL), BORROW_PERCENT).send({ from: owner });
+    await expectInPosition(PRINCIPAL, LEVERAGE);
 
     await mineBlock(60 * 60 * 24 * DAYS_TO_SAFE_GAS);
 
-    console.log("💰", fmt6(await aaveloop.methods.getLiquidity().call()), fmt6(await aaveloop.methods.getSupplyBalance().call()));
+    expect(await aaveloop.methods.getLiquidity().call())
+      .bignumber.gt(zero)
+      .lt(await asset.amount(PRINCIPAL * 0.02)); // < 2% liquidity
 
-    await aaveloop.methods.exit().send({ from: owner });
+    const tx = await aaveloop.methods.exit().send({ from: owner });
+    expect(tx.gasUsed).lt(MAX_SAGE_GAS);
 
-    console.log("🌾", fmt6(await aaveloop.methods.getLiquidity().call()), fmt6(await aaveloop.methods.getSupplyBalance().call()));
+    await expectOutOfPosition();
+    expect(await asset.methods.balanceOf(owner).call()).bignumber.gt(zero);
 
-    // expect(await aaveloop.methods.getLiquidity().call())
-    //   .bignumber.gt(zero)
-    //   .lt(await asset.amount(PRINCIPAL * 0.02)); // < 2% liquidity
-    //
-    // const tx = await aaveloop.methods.exitPosition(50).send({ from: owner });
-    // expect(tx.gasUsed).lt(10_000_000);
-    // await expectOutOfPosition();
-    //
-    // expect(await asset.methods.balanceOf(owner).call()).bignumber.closeTo(await asset.amount(PRINCIPAL), await asset.amount(PRINCIPAL * 0.05)); // 5% max interest paid over 1 year
+    expect(await aaveloop.methods.getPendingRewards().call()).bignumber.gt(zero);
+    expect(await reward.methods.balanceOf(owner).call()).bignumber.zero;
+
+    await aaveloop.methods.claimRewardsToOwner().send({ from: deployer });
+    expect(await reward.methods.balanceOf(owner).call()).bignumber.gt(zero);
+
+    console.log("=================");
+    const endBalance = bn(await asset.methods.balanceOf(owner).call());
+    const profitFromInterest = await asset.mantissa(endBalance.sub(await asset.amount(PRINCIPAL)));
+    console.log("profit from interest", fmt18(profitFromInterest));
+
+    const rewardPrice = await getPrice(reward);
+    const principalUsd = PRINCIPAL * (await getPrice(asset));
+    console.log("assuming reward price in USD", rewardPrice);
+    const rewardBalance = await reward.mantissa(await reward.methods.balanceOf(owner).call());
+    const profitFromRewards = await reward.mantissa(rewardBalance.muln(rewardPrice));
+    console.log("profit from rewards", fmt18(profitFromRewards));
+    const rewardsAPR = profitFromRewards.mul(ether).div(bn18(principalUsd)).muln(365).divn(DAYS_TO_SAFE_GAS);
+    console.log("rewards APR", fmt18(rewardsAPR.muln(100)), "%");
+
+    const interestAPR = profitFromInterest.mul(ether).div(bn18(principalUsd)).muln(365).divn(DAYS_TO_SAFE_GAS);
+    console.log("interest APR:", fmt18(interestAPR.muln(100)), "%");
+    console.log("=================");
   });
-
-  // [0, 1, 2].map((iterations) =>
-  //   it(`Enter & exit with ${iterations} iterations`, async () => {
-  //     await aaveloop.methods.enterPositionFully(iterations).send({ from: owner });
-  //     await expectInPosition(PRINCIPAL, iterations == 0 ? 0 : 1.1); // depends on LTV
-  //
-  //     // expect(await aaveloop.methods.exitPosition(100).call({ from: owner })).bignumber.closeTo(await asset.amount(PRINCIPAL), await asset.amount(1));
-  //     await aaveloop.methods.exitPosition(100).send({ from: owner });
-  //     await expectOutOfPosition();
-  //
-  //     expect(await asset.methods.balanceOf(owner).call()).bignumber.closeTo(await asset.amount(PRINCIPAL), await asset.amount(1));
-  //   })
-  // );
-
-  // it("Show me the money", async () => {
-  //   await aaveloop.methods.enterPosition(await asset.amount(PRINCIPAL), ITERATIONS).send({ from: owner });
-  //   await expectInPosition(PRINCIPAL, 4);
-  //
-  //   await mineBlocks(60 * 60 * 24, 10); // secondsPerBlock does not change outcome (Aave uses block.timestamp)
-  //
-  //   const pending = await aaveloop.methods.getPendingRewards().call();
-  //   expect(pending).bignumber.gt(zero);
-  //   expect(await reward.methods.balanceOf(owner).call()).bignumber.zero;
-  //
-  //   await aaveloop.methods.claimRewardsToOwner().send({ from: deployer });
-  //
-  //   expect(await reward.methods.balanceOf(owner).call())
-  //     .bignumber.gt(zero)
-  //     .closeTo(pending, bn(pending).muln(0.01));
-  //
-  //   await aaveloop.methods.exitPosition(50).send({ from: owner });
-  //   await expectOutOfPosition();
-  //
-  //   const endBalance = bn(await asset.methods.balanceOf(owner).call());
-  //   const profitFromInterest = await asset.mantissa(endBalance.sub(await asset.amount(PRINCIPAL)));
-  //   console.log("profit from interest", fmt18(profitFromInterest));
-  //
-  //   const rewardPrice = await getPrice(reward);
-  //   console.log("assuming reward price in USD", rewardPrice);
-  //   const rewardBalance = await reward.mantissa(await reward.methods.balanceOf(owner).call());
-  //   const profitFromRewards = await reward.mantissa(rewardBalance.muln(rewardPrice));
-  //   console.log("profit from rewards", fmt18(profitFromRewards));
-  //   const profit = profitFromInterest.add(profitFromRewards);
-  //   console.log("total profit", fmt18(profit));
-  //
-  //   const principalUsd = PRINCIPAL * (await getPrice(asset));
-  //   const dailyRate = profit.mul(ether).div(bn18(principalUsd));
-  //   console.log("dailyRate:", fmt18(dailyRate.muln(100)), "%");
-  //
-  //   const APR = dailyRate.muln(365);
-  //   console.log("result APR: ", fmt18(APR.muln(100)), "%");
-  //
-  //   const APY = Math.pow(1 + parseFloat(fmt18(APR.divn(365))), 365) - 1;
-  //   console.log("result APY: ", APY * 100, "%");
-  //   console.log("=================");
-  // });
 
   // it("Add to existing position", async () => {
   //   await aaveloop.methods.enterPosition(await asset.amount(PRINCIPAL), ITERATIONS).send({ from: owner });

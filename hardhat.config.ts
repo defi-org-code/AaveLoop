@@ -56,7 +56,7 @@ export default {
     target: "web3-v1",
   },
   mocha: {
-    timeout: 240_000,
+    timeout: 500_000,
     retries: 0,
     bail: true,
   },

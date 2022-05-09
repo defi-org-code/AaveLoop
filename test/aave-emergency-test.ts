@@ -1,28 +1,28 @@
 import BN from "bn.js";
 import { expect } from "chai";
-import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fundOwner, incentives, initFixture, aavePool, networkShortName, owner } from "./test-base";
+import { aaveloop, asset, deployer, expectInPosition, expectOutOfPosition, fund, incentives, initFixture, aavePool, networkShortName, owner } from "./test-base";
 import { weth } from "./consts";
 import { bn, ether, maxUint256 } from "@defi.org/web3-candies";
 import { deployArtifact } from "@defi.org/web3-candies/dist/hardhat";
 import { AaveLoopV3 } from "../typechain-hardhat/AaveLoopV3";
 
-describe("AaveLoop Emergency Tests", () => {
+xdescribe("AaveLoop Emergency Tests", () => {
   const PRINCIPAL = 1_000_000;
   let initialBalance: BN;
 
   beforeEach(async () => {
     await initFixture();
-    await fundOwner(PRINCIPAL);
+    await fund(owner, PRINCIPAL);
     initialBalance = bn(await asset.methods.balanceOf(owner).call());
   });
 
-  it("Owner able to call step by step", async () => {
+  it("Owner able to call aave functions step by step", async () => {
     await asset.methods.transfer(aaveloop.options.address, 100).send({ from: owner });
     await aaveloop.methods._supply(100).send({ from: owner });
     await aaveloop.methods._borrow(50).send({ from: owner });
     await aaveloop.methods._repayBorrow(50).send({ from: owner });
     await aaveloop.methods._redeemSupply(100).send({ from: owner });
-    await aaveloop.methods._withdrawToOwner(asset.address).send({ from: owner });
+    await aaveloop.methods._withdrawUSDCToOwner().send({ from: owner });
     await expectOutOfPosition();
   });
 

@@ -19,27 +19,32 @@ contract AaveLoopV3 is ImmutableOwnable, IFlashLoanReceiver {
     uint256 public constant USE_VARIABLE_DEBT = 2;
     uint8 public constant EMODE = 1;
 
+    bool private flashloanLock = false;
+
     ERC20 public immutable ASSET; // solhint-disable-line
+    ERC20 public immutable REWARD; // solhint-disable-line
     IPool public immutable POOL; // solhint-disable-line
-    IAaveIncentivesController public immutable INCENTIVES; // solhint-disable-line
+    IRewardsController public immutable INCENTIVES; // solhint-disable-line
 
     /**
      * @param owner The contract owner, has complete ownership, immutable
      * @param asset The target underlying asset ex. USDC
      * @param pool The deployed AAVE IPool
-     * @param incentives The deployed AAVE IAaveIncentivesController
+     * @param incentives The deployed AAVE IRewardsController
      */
     constructor(
         address owner,
         address asset,
+        address reward,
         address pool,
         address incentives
     ) ImmutableOwnable(owner) {
-        require(asset != address(0) && pool != address(0) && incentives != address(0), "E0");
+        require(asset != address(0) && reward != address(0) && pool != address(0) && incentives != address(0), "E0");
 
         ASSET = ERC20(asset);
+        REWARD = ERC20(reward);
         POOL = IPool(pool);
-        INCENTIVES = IAaveIncentivesController(incentives);
+        INCENTIVES = IRewardsController(incentives);
     }
 
     // ------------------------------------------------ views ------------------------------------------------
@@ -93,7 +98,9 @@ contract AaveLoopV3 is ImmutableOwnable, IFlashLoanReceiver {
      * @return Pending rewards
      */
     function getPendingRewards() public view returns (uint256) {
-        return INCENTIVES.getRewardsBalance(getSupplyAndBorrowAssets(), address(this));
+        (address[] memory rewards, uint256[] memory amounts) = INCENTIVES.getAllUserRewards(getSupplyAndBorrowAssets(), address(this));
+        require(rewards.length == 1 && rewards[0] == address(REWARD));
+        return amounts[0];
     }
 
     /**
@@ -115,9 +122,9 @@ contract AaveLoopV3 is ImmutableOwnable, IFlashLoanReceiver {
     }
 
     /**
-     * @return LTV of ASSET in eMode, in 4 decimals ex. 82.5% == 8250
+     * @return LTV of ASSET in eMode, in 4 decimals ex. 82.50% == 8250
      */
-    function getLTV() public view returns (uint256) {
+    function getLTV4() public view returns (uint256) {
         return POOL.getEModeCategoryData(EMODE).ltv;
     }
 
@@ -132,17 +139,11 @@ contract AaveLoopV3 is ImmutableOwnable, IFlashLoanReceiver {
 
     // ------------------------------------------------ main ------------------------------------------------
 
-    function enterAll() external onlyOwner returns (uint256) {
-        uint256 buffer = 100; // 0.01
-        uint256 borrowFactor4 = (1e4 / (1e4 - (getLTV() - buffer))) * 1e4; // 0.97 => 0.96 => x25 => 2500
-        return enter(ASSET.balanceOf(msg.sender), borrowFactor4);
-    }
-
-    function enter(uint256 principal, uint256 borrowFactor4) public onlyOwner returns (uint256) {
+    function enter(uint256 principal, uint256 borrowPercent) public onlyOwner returns (uint256) {
         POOL.setUserEMode(EMODE);
         ASSET.safeTransferFrom(msg.sender, address(this), principal);
 
-        uint256 borrowAmount = (principal * borrowFactor4) / 1e4;
+        uint256 borrowAmount = (principal * borrowPercent) / 100;
         _flashBorrowThenSupply(borrowAmount);
 
         return getLiquidity();
@@ -150,7 +151,7 @@ contract AaveLoopV3 is ImmutableOwnable, IFlashLoanReceiver {
 
     function exit() external onlyOwner returns (uint256) {
         _flashBorrowThenExit();
-        return _withdrawToOwner(address(ASSET));
+        return _withdrawUSDCToOwner();
     }
 
     // ---------------------- internals, public onlyOwner in case of emergency ------------------------
@@ -162,7 +163,9 @@ contract AaveLoopV3 is ImmutableOwnable, IFlashLoanReceiver {
         assets[0] = address(ASSET);
         amounts[0] = amount;
         modes[0] = USE_VARIABLE_DEBT;
+        flashloanLock = true;
         POOL.flashLoan(address(this), assets, amounts, modes, address(this), abi.encode(false), 0);
+        flashloanLock = false;
     }
 
     function _flashBorrowThenExit() public onlyOwner {
@@ -172,31 +175,33 @@ contract AaveLoopV3 is ImmutableOwnable, IFlashLoanReceiver {
         assets[0] = address(ASSET);
         amounts[0] = getBorrowBalance();
         modes[0] = 0;
+        flashloanLock = true;
         POOL.flashLoan(address(this), assets, amounts, modes, address(this), abi.encode(true), 0);
+        flashloanLock = false;
     }
 
     /**
      * falshloan callback
      */
     function executeOperation(
-        address[] calldata, /* assets */
+        address[] calldata assets,
         uint256[] calldata amounts,
         uint256[] calldata premiums,
         address initiator,
         bytes calldata params
     ) external returns (bool) {
-        require(initiator == address(this), "E1");
+        require(flashloanLock && assets[0] == address(ASSET) && initiator == address(this), "E2");
         bool willExit = abi.decode(params, (bool));
         if (willExit) {
             POOL.repayWithATokens(address(ASSET), type(uint256).max, USE_VARIABLE_DEBT);
             POOL.withdraw(address(ASSET), type(uint256).max, address(this));
             ASSET.safeIncreaseAllowance(address(POOL), amounts[0] + premiums[0]);
+            // repay flashloan
         } else {
             uint256 amount = ASSET.balanceOf(address(this));
             ASSET.safeIncreaseAllowance(address(POOL), amount);
             POOL.supply(address(ASSET), amount, address(this), 0);
         }
-
         return true;
     }
 
@@ -228,6 +233,10 @@ contract AaveLoopV3 is ImmutableOwnable, IFlashLoanReceiver {
     function _repayBorrow(uint256 amount) public onlyOwner {
         ASSET.safeIncreaseAllowance(address(POOL), amount);
         POOL.repay(address(ASSET), amount, USE_VARIABLE_DEBT, address(this));
+    }
+
+    function _withdrawUSDCToOwner() public onlyOwner returns (uint256) {
+        return _withdrawToOwner(address(ASSET));
     }
 
     function _withdrawToOwner(address asset) public onlyOwner returns (uint256) {
